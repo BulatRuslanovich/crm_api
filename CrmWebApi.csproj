@@ -5,6 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<RootNamespace>CrmWebApi</RootNamespace>
 		<NoWarn>$(NoWarn);NU1900</NoWarn>
+		<AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
 	</PropertyGroup>
 
 	<ItemGroup>
