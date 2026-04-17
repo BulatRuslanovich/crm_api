@@ -1,0 +1,21 @@
+crmwebapi.ru {
+    @junk {
+        path /wp-admin/* /wordpress/* *.php *.env *.git*
+    }
+    respond @junk 444
+
+    @internal {
+        path /health /metrics
+    }
+    respond @internal 404
+
+    header {
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+
+    @api path /api/*
+    reverse_proxy @api api:8080
+
+    reverse_proxy frontend:3000
+}

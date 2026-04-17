@@ -1,0 +1,65 @@
+using CrmWebApi.Common;
+using CrmWebApi.Data;
+using CrmWebApi.Data.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace CrmWebApi.Repositories.Impl;
+
+public class ActivRepository(AppDbContext db) : IActivRepository
+{
+	public IQueryable<Activ> Query() =>
+		db.Activs.Where(a => !a.IsDeleted).AsQueryable().AsSplitQuery().AsNoTracking();
+
+	public IQueryable<Activ> QueryForScope(ActivScope scope)
+	{
+		var baseQuery = Query();
+		return scope.Visibility switch
+		{
+			ActivVisibility.All => baseQuery,
+			ActivVisibility.Own => baseQuery.Where(a => a.UsrId == scope.CurrentUsrId),
+			ActivVisibility.Department => baseQuery.Where(a =>
+				a.UsrId == scope.CurrentUsrId
+				|| a.Usr.UsrDepartments.Any(ud =>
+					ud.Department.UsrDepartments.Any(mine => mine.UsrId == scope.CurrentUsrId)
+				)
+			),
+			_ => baseQuery.Where(_ => false),
+		};
+	}
+
+	public async Task<Activ> AddAsync(Activ entity)
+	{
+		db.Activs.Add(entity);
+		await db.SaveChangesAsync();
+		return entity;
+	}
+
+	public async Task<Activ> AddWithDrugsAsync(Activ entity, IEnumerable<int> drugIds)
+	{
+		foreach (var drugId in drugIds)
+			entity.ActivDrugs.Add(new ActivDrug { DrugId = drugId });
+		db.Activs.Add(entity);
+		await db.SaveChangesAsync();
+		return entity;
+	}
+
+	public async Task UpdateAsync(Activ entity)
+	{
+		db.Activs.Update(entity);
+		await db.SaveChangesAsync();
+	}
+
+	public async Task LinkDrugAsync(int activId, int drugId)
+	{
+		db.ActivDrugs.Add(new ActivDrug { ActivId = activId, DrugId = drugId });
+		await db.SaveChangesAsync();
+	}
+
+	public async Task<bool> UnlinkDrugAsync(int activId, int drugId)
+	{
+		var deleted = await db
+			.ActivDrugs.Where(ad => ad.ActivId == activId && ad.DrugId == drugId)
+			.ExecuteDeleteAsync();
+		return deleted > 0;
+	}
+}

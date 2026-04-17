@@ -1,0 +1,18 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+## Secrets
+appsettings.*.json
+.env
+.env.local
+
+## Rider / JetBrains
+.idea/
+
+## OS
+.DS_Store
+Thumbs.db
