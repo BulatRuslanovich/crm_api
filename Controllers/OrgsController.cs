@@ -28,7 +28,7 @@ public class OrgsController(IOrgService service) : ApiController
 		[FromQuery] string? search = null
 	) =>
 		FromResult(
-			await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 100), search)
+			await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 1000), search)
 		);
 
 	[HttpGet("{id:int}")]

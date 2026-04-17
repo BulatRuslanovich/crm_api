@@ -71,8 +71,8 @@ docker compose -f docker-compose.dev.yml up -d
 
 ```bash
 python -n venv venv
-sh .venv/bin/activate
-pip install faker psycopg2
+source .venv/bin/activate.fish # скрипт зависит от оболочки или ос
+pip install faker psycopg2-binary
 python generate-fake-date.py
 ```
 
