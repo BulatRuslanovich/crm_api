@@ -4,6 +4,7 @@ namespace CrmWebApi.Repositories;
 
 public interface IUserRepository
 {
+	public IQueryable<Usr> QueryForScope(Common.Scope scope);
 	public IQueryable<Usr> QueryHard();
 	public IQueryable<Usr> QueryLite();
 	public Task<bool> ExistsAsync(System.Linq.Expressions.Expression<Func<Usr, bool>> predicate);

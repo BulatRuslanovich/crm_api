@@ -12,4 +12,5 @@ public class ActivQuery
 	public int[]? Statuses { get; set; }
 	public DateTimeOffset? DateFrom { get; set; }
 	public DateTimeOffset? DateTo { get; set; }
+	public int? UsrId { get; set; }
 }

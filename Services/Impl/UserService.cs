@@ -22,9 +22,9 @@ public class UserService(
 		Expiration = TimeSpan.FromMinutes(10),
 	};
 
-	public async Task<Result<PagedResponse<UserResponse>>> GetAllAsync(int page, int pageSize)
+	public async Task<Result<PagedResponse<UserResponse>>> GetAllAsync(int page, int pageSize, Scope scope)
 	{
-		var query = repo.QueryHard();
+		var query = repo.QueryForScope(scope);
 		var total = await query.CountAsync();
 		var entities = await query
 			.OrderBy(u => u.UsrId)

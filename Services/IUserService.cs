@@ -7,7 +7,7 @@ namespace CrmWebApi.Services;
 
 public interface IUserService
 {
-	public Task<Result<PagedResponse<UserResponse>>> GetAllAsync(int page, int pageSize);
+	public Task<Result<PagedResponse<UserResponse>>> GetAllAsync(int page, int pageSize, Scope scope);
 	public Task<Result<UserResponse>> GetByIdAsync(int id);
 	public Task<Result<UserResponse>> CreateAsync(CreateUserRequest request);
 	public Task<Result<UserResponse>> UpdateAsync(int id, UpdateUserRequest request);

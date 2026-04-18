@@ -28,14 +28,20 @@ public class UsersController(IUserService service) : ApiController
 		FromResult(await service.GetPolicyByIdAsync(id));
 
 	[HttpGet]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = "Admin, Manager, Director")]
 	[EndpointSummary("List all users")]
-	[EndpointDescription("Paginated list of users with their policies. Admin only.")]
+	[EndpointDescription("Paginated list of users with their policies.")]
 	[ProducesResponseType<PagedResponse<UserResponse>>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
 		[FromQuery] int pageSize = 20
-	) => FromResult(await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 100)));
+	) { 
+		if (!TryGetScope(out var scope, out var forbid))
+			return forbid!;
+
+		return FromResult(await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 1000), scope)); 
+	}
+
 
 	[HttpGet("{id:int}")]
 	[EndpointSummary("Get user by ID")]
@@ -130,4 +136,5 @@ public class UsersController(IUserService service) : ApiController
 	[ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> UnlinkPolicy(int id, int policyId) =>
 		FromResult(await service.UnlinkPolicyAsync(id, policyId));
+
 }

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using CrmWebApi.Common;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Activ;
 using CrmWebApi.Services;
@@ -114,27 +113,5 @@ public class ActivsController(IActivService service) : ApiController
 		if (!TryGetScope(out var scope, out var forbid))
 			return forbid!;
 		return FromResult(await service.UnlinkDrugAsync(activId, drugId, scope));
-	}
-
-	private bool TryGetScope(out ActivScope scope, out IActionResult? forbid)
-	{
-		scope = default;
-		forbid = null;
-
-		var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-		if (!int.TryParse(userIdClaim, out var usrId))
-		{
-			forbid = Forbid();
-			return false;
-		}
-
-		if (User.IsInRole("Admin") || User.IsInRole("Director"))
-			scope = ActivScope.ForAll(usrId);
-		else if (User.IsInRole("Manager"))
-			scope = ActivScope.ForDepartment(usrId);
-		else
-			scope = ActivScope.ForOwn(usrId);
-
-		return true;
 	}
 }

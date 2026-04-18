@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CrmWebApi.Common;
 using Microsoft.AspNetCore.Mvc;
 
@@ -46,6 +47,28 @@ public abstract class ApiController : ControllerBase
 		return StatusCode(problem.Status!.Value, problem);
 	}
 
+	protected bool TryGetScope(out Scope scope, out IActionResult? forbid)
+	{
+		scope = default;
+		forbid = null;
+
+		var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+		if (!int.TryParse(userIdClaim, out var usrId))
+		{
+			forbid = Forbid();
+			return false;
+		}
+
+		if (User.IsInRole("Admin") || User.IsInRole("Director"))
+			scope = Scope.ForAll(usrId);
+		else if (User.IsInRole("Manager"))
+			scope = Scope.ForDepartment(usrId);
+		else
+			scope = Scope.ForOwn(usrId);
+
+		return true;
+	}
+
 	private static int StatusCodeFor(ErrorType type) =>
 		type switch
 		{
@@ -56,4 +79,6 @@ public abstract class ApiController : ControllerBase
 			ErrorType.Validation => StatusCodes.Status400BadRequest,
 			_ => StatusCodes.Status500InternalServerError,
 		};
+	
+
 }

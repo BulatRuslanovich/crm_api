@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using CrmWebApi.Common;
 using CrmWebApi.Data;
 using CrmWebApi.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,24 @@ namespace CrmWebApi.Repositories.Impl;
 
 public class UserRepository(AppDbContext db) : IUserRepository
 {
+	public IQueryable<Usr> QueryForScope(Scope scope)
+	{
+		var baseQuery = QueryHard();
+		return scope.Visibility switch
+		{
+			Visibility.All => baseQuery,
+			Visibility.Own => baseQuery.Where(u => u.UsrId == scope.CurrentUsrId),
+			Visibility.Department => baseQuery.Where(u =>
+				u.UsrId == scope.CurrentUsrId
+				|| u.UsrDepartments.Any(ud =>
+					ud.Department.UsrDepartments.Any(mine => mine.UsrId == scope.CurrentUsrId)
+				)
+			),
+			_ => baseQuery.Where(_ => false),
+		};
+	} 
+
+
 	public IQueryable<Usr> QueryHard() =>
 		db
 			.Usrs.Where(u => !u.IsDeleted)

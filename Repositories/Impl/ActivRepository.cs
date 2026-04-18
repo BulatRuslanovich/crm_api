@@ -10,14 +10,14 @@ public class ActivRepository(AppDbContext db) : IActivRepository
 	public IQueryable<Activ> Query() =>
 		db.Activs.Where(a => !a.IsDeleted).AsQueryable().AsSplitQuery().AsNoTracking();
 
-	public IQueryable<Activ> QueryForScope(ActivScope scope)
+	public IQueryable<Activ> QueryForScope(Scope scope)
 	{
 		var baseQuery = Query();
 		return scope.Visibility switch
 		{
-			ActivVisibility.All => baseQuery,
-			ActivVisibility.Own => baseQuery.Where(a => a.UsrId == scope.CurrentUsrId),
-			ActivVisibility.Department => baseQuery.Where(a =>
+			Visibility.All => baseQuery,
+			Visibility.Own => baseQuery.Where(a => a.UsrId == scope.CurrentUsrId),
+			Visibility.Department => baseQuery.Where(a =>
 				a.UsrId == scope.CurrentUsrId
 				|| a.Usr.UsrDepartments.Any(ud =>
 					ud.Department.UsrDepartments.Any(mine => mine.UsrId == scope.CurrentUsrId)

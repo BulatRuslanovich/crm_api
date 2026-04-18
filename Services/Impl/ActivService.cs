@@ -16,14 +16,14 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 
 	public async Task<Result<PagedResponse<ActivResponse>>> GetAllAsync(
 		ActivQuery activQuery,
-		ActivScope scope
+		Scope scope
 	)
 	{
 		var statusesList = activQuery.Statuses?.ToList();
 		var searchValue = activQuery.Search;
 
 		return await cache.GetOrCreateAsync(
-			$"activs:{scope.Visibility}:{scope.CurrentUsrId}:{activQuery.Page}:{activQuery.PageSize}:{searchValue}:{activQuery.SortBy}:{activQuery.SortDesc}:{string.Join(",", statusesList ?? [])}:{activQuery.DateFrom:O}:{activQuery.DateTo:O}",
+			$"activs:{scope.Visibility}:{scope.CurrentUsrId}:{activQuery.Page}:{activQuery.PageSize}:{searchValue}:{activQuery.SortBy}:{activQuery.SortDesc}:{string.Join(",", statusesList ?? [])}:{activQuery.DateFrom:O}:{activQuery.DateTo:O}:{activQuery.UsrId:0}",
 			async ct =>
 			{
 				var query = repo.QueryForScope(scope);
@@ -45,6 +45,9 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 						|| a.ActivDrugs.Any(ad => EF.Functions.ILike(ad.Drug.DrugName, pattern))
 					);
 				}
+
+				if (activQuery.UsrId is not null)
+					query = query.Where(a => a.UsrId == activQuery.UsrId);
 
 				if (activQuery.DateFrom is not null)
 					query = query.Where(a => a.ActivStart >= activQuery.DateFrom);
@@ -117,7 +120,7 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		);
 	}
 
-	public async Task<Result<ActivResponse>> GetByIdAsync(int id, ActivScope scope)
+	public async Task<Result<ActivResponse>> GetByIdAsync(int id, Scope scope)
 	{
 		var activ = await repo.QueryForScope(scope)
 			.Where(a => a.ActivId == id)
@@ -173,13 +176,13 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		await cache.RemoveByTagAsync("activs");
 
 		logger.LogInformation("Activity created: id={ActivId}, usr={UsrId}", activ.ActivId, usrId);
-		return await GetByIdAsync(activ.ActivId, ActivScope.ForAll(usrId));
+		return await GetByIdAsync(activ.ActivId, Scope.ForAll(usrId));
 	}
 
 	public async Task<Result<ActivResponse>> UpdateAsync(
 		int id,
 		UpdateActivRequest req,
-		ActivScope scope
+		Scope scope
 	)
 	{
 		var activ = await repo.QueryForScope(scope).FirstOrDefaultAsync(a => a.ActivId == id);
@@ -194,10 +197,10 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		await repo.UpdateAsync(activ);
 		await cache.RemoveByTagAsync("activs");
 		logger.LogInformation("Activity updated: id={ActivId}", id);
-		return await GetByIdAsync(id, ActivScope.ForAll(scope.CurrentUsrId));
+		return await GetByIdAsync(id, Scope.ForAll(scope.CurrentUsrId));
 	}
 
-	public async Task<Result> DeleteAsync(int id, ActivScope scope)
+	public async Task<Result> DeleteAsync(int id, Scope scope)
 	{
 		var activ = await repo.QueryForScope(scope).FirstOrDefaultAsync(a => a.ActivId == id);
 		if (activ is null)
@@ -210,7 +213,7 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		return Result.Success();
 	}
 
-	public async Task<Result> LinkDrugAsync(int activId, int drugId, ActivScope scope)
+	public async Task<Result> LinkDrugAsync(int activId, int drugId, Scope scope)
 	{
 		var exists = await repo.QueryForScope(scope).AnyAsync(a => a.ActivId == activId);
 		if (!exists)
@@ -221,7 +224,7 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		return Result.Success();
 	}
 
-	public async Task<Result> UnlinkDrugAsync(int activId, int drugId, ActivScope scope)
+	public async Task<Result> UnlinkDrugAsync(int activId, int drugId, Scope scope)
 	{
 		var exists = await repo.QueryForScope(scope).AnyAsync(a => a.ActivId == activId);
 		if (!exists)
