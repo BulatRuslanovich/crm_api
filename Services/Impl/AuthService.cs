@@ -29,6 +29,7 @@ public class AuthService(
 		if (await userRepo.ExistsAsync(u => u.UsrLogin == req.Login || u.UsrEmail == req.Email))
 			return Error.Conflict("Пользователь с такими данными уже зарегистрирован");
 
+		var requireEmailConfirmation = IsEmailConfirmationRequired();
 		var user = new Usr
 		{
 			UsrFirstname = req.FirstName,
@@ -36,17 +37,20 @@ public class AuthService(
 			UsrEmail = req.Email,
 			UsrLogin = req.Login,
 			UsrPasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-			IsEmailConfirmed = false,
+			IsEmailConfirmed = !requireEmailConfirmation,
 		};
 
 		await userRepo.AddAsync(user);
+
+		if (!requireEmailConfirmation)
+			return new PendingConfirmationResponse(req.Email!, EmailConfirmationRequired: false);
 
 		try
 		{
 			var code = await SendOtpAsync(user, TokenTypeConfirmation, expiryHours: 24);
 			var displayName = BuildDisplayName(req.FirstName, req.LastName, req.Login);
 			await emailService.SendEmailConfirmationAsync(req.Email!, displayName, code);
-			return new PendingConfirmationResponse(req.Email!);
+			return new PendingConfirmationResponse(req.Email!, EmailConfirmationRequired: true);
 		}
 		catch (Exception ex)
 		{
@@ -77,6 +81,9 @@ public class AuthService(
 
 	public async Task<Result> ResendConfirmationAsync(string email)
 	{
+		if (!IsEmailConfirmationRequired())
+			return Result.Success();
+
 		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == email && !u.IsDeleted);
 		if (user is null || user.IsEmailConfirmed)
 			return Result.Success();
@@ -114,7 +121,7 @@ public class AuthService(
 		if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.UsrPasswordHash))
 			return Error.Unauthorized("Неверный логин или пароль");
 
-		if (!user.IsEmailConfirmed)
+		if (IsEmailConfirmationRequired() && !user.IsEmailConfirmed)
 			return Error.Forbidden(
 				"Email не подтверждён",
 				new Dictionary<string, object?> { ["email"] = user.UsrEmail }
@@ -306,6 +313,9 @@ public class AuthService(
 		var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
 		return Convert.ToHexString(bytes).ToLowerInvariant();
 	}
+
+	private bool IsEmailConfirmationRequired() =>
+		!bool.TryParse(config["Auth:RequireEmailConfirmation"], out var required) || required;
 
 	private static string BuildDisplayName(string? first, string? last, string fallback)
 	{

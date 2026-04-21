@@ -1,3 +1,3 @@
 namespace CrmWebApi.DTOs.Auth;
 
-public record PendingConfirmationResponse(string Email);
+public record PendingConfirmationResponse(string Email, bool EmailConfirmationRequired = true);

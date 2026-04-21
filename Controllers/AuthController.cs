@@ -16,7 +16,7 @@ public class AuthController(IAuthService service) : ApiController
 	[AllowAnonymous]
 	[EndpointSummary("Register a new user")]
 	[EndpointDescription(
-		"Creates a user account and sends a 6-digit OTP code to the provided email. The account must be confirmed before login."
+		"Creates a user account. When Auth:RequireEmailConfirmation is enabled, sends a 6-digit OTP code and requires email confirmation before login."
 	)]
 	[ProducesResponseType<PendingConfirmationResponse>(StatusCodes.Status202Accepted)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
