@@ -54,9 +54,7 @@
 | `Representative` | только свои активности |
 
 Защищённые эндпоинты требуют заголовок `Authorization: Bearer <access_token>`.
-В dev-режиме доступен Scalar UI: `http://localhost:5000/scalar/v1`.
+Scalar UI: `http://localhost:5000/scalar/v1`.
 
-## Документация
 
-- **[API.md](API.md)** — справочник REST API: все эндпоинты, TS-интерфейсы, примеры
 - **[DEV.md](DEV.md)** — памятка разработчику: как поднять проект локально
