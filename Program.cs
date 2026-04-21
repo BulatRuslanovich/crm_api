@@ -65,18 +65,17 @@ app.UseHttpMetrics();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger UI (Scalar) только в dev-режиме
-if (app.Environment.IsDevelopment())
+// Swagger UI (Scalar) 
+
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
 {
-	app.MapOpenApi();
-	app.MapScalarApiReference(options =>
-	{
-		options.Title = "CRM API";
-		options.Theme = ScalarTheme.DeepSpace;
-		options.DefaultHttpClient = new(ScalarTarget.Shell, ScalarClient.Curl);
-		options.AddPreferredSecuritySchemes("Bearer").AddHttpAuthentication("Bearer", _ => { });
-	});
-}
+	options.Title = "CRM API";
+	options.Theme = ScalarTheme.DeepSpace;
+	options.DefaultHttpClient = new(ScalarTarget.Shell, ScalarClient.Curl);
+	options.AddPreferredSecuritySchemes("Bearer").AddHttpAuthentication("Bearer", _ => { });
+});
+
 
 // Health check эндпоинт (для nginx/k8s/мониторинга)
 app.MapHealthChecks("/health");
