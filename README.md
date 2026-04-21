@@ -23,20 +23,14 @@
 | Категория | Технологии |
 |---|---|
 | Runtime | .NET 10, ASP.NET Core |
-| База данных | PostgreSQL 17, Entity Framework Core 9 |
-| Аутентификация | JWT Bearer, BCrypt, Email OTP |
-| Валидация | FluentValidation |
+| База данных | PostgreSQL 17 |
+| ORM | Entity Framework Core 9 |
+| Аутентификация | JWT Bearer |
 | Кэширование | HybridCache; in-memory локально, Redis в production compose |
-| Логирование | Serilog |
 | Email | MailKit (Gmail SMTP) |
 | Документация | OpenAPI + Scalar |
-| Инфраструктура | Docker, Caddy, GitHub Actions CI |
+| Инфраструктура | Docker, Caddy, GitHub Actions CI, Pharmo Web, Grafana |
 
-## Архитектура
-
-```
-Controllers  →  Services  →  Repositories  →  EF Core / PostgreSQL
-```
 
 ## API
 
@@ -64,18 +58,6 @@ Controllers  →  Services  →  Repositories  →  EF Core / PostgreSQL
 
 Защищённые эндпоинты требуют заголовок `Authorization: Bearer <access_token>`.
 В dev-режиме доступен Scalar UI: `http://localhost:5000/scalar/v1`.
-
-Для тяжелых списков доступен query-параметр `includeTotal=false`: API пропустит `COUNT(*)` и вернет `totalCount: 0`, сохранив форму ответа.
-
-## CI
-
-GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает:
-
-- `dotnet restore`
-- `dotnet format --verify-no-changes`
-- `dotnet build -c Release`
-- `dotnet test -c Release`
-- `dotnet list package --vulnerable --include-transitive`
 
 ## Документация
 
