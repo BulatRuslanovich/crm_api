@@ -33,8 +33,8 @@ dotnet --version
 ## 1. Клонирование и восстановление зависимостей
 
 ```bash
-git clone https://github.com/BulatRuslanovich/crm-api.git
-cd crm-api
+git clone https://github.com/BulatRuslanovich/crm_api.git
+cd crm_api
 dotnet restore
 ```
 
@@ -139,7 +139,7 @@ dotnet watch
 **Дебаг в Rider / Visual Studio:** стандартная кнопка запуска — они сами подхватят `launchSettings.json`.
 
 API поднимется на `http://localhost:5000`.
-Scalar UI (только в `Development`): [`http://localhost:5000/scalar/v1`](http://localhost:5000/scalar/v1).
+Scalar UI: [`http://localhost:5000/scalar/v1`](http://localhost:5000/scalar/v1).
 
 ---
 
@@ -166,7 +166,6 @@ curl -X POST http://localhost:5000/api/auth/register \
   }'
 ```
 
-Полная документация API — [API.md](API.md).
 
 **Быстрая проверка качества:**
 
@@ -221,12 +220,3 @@ docker compose -f docker-compose.dev.yml logs db
 ### `JWT secret must be at least 32 chars`
 
 Задайте `Jwt:Secret` через user-secrets (см. [шаг 3](#3-настроить-секреты)).
-
-### Scalar UI не открывается
-
-Scalar работает только в `Development`-окружении. Проверьте:
-
-```bash
-echo $ASPNETCORE_ENVIRONMENT
-# Должно быть Development (или не задано — тогда используется Development по умолчанию при dotnet run)
-```
