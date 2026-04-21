@@ -38,26 +38,30 @@ public class AuthService(
 			UsrPasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
 			IsEmailConfirmed = false,
 		};
+
 		await userRepo.AddAsync(user);
 
-		var code = await SendOtpAsync(user, TokenTypeConfirmation, expiryHours: 24);
-
-		var displayName = BuildDisplayName(req.FirstName, req.LastName, req.Login);
 		try
 		{
+			var code = await SendOtpAsync(user, TokenTypeConfirmation, expiryHours: 24);
+			var displayName = BuildDisplayName(req.FirstName, req.LastName, req.Login);
 			await emailService.SendEmailConfirmationAsync(req.Email!, displayName, code);
+			return new PendingConfirmationResponse(req.Email!);
 		}
 		catch (Exception ex)
 		{
 			logger.LogError(ex, "Failed to send confirmation email to {Email}", req.Email);
+			await emailTokenRepo.DeleteAllForUserAsync(user.UsrId, TokenTypeConfirmation);
+			user.IsDeleted = true;
+			await userRepo.UpdateAsync(user);
+			await refreshRepo.RevokeAllForUserAsync(user.UsrId);
+			return Error.Failure("Не удалось отправить письмо. Попробуйте позже.");
 		}
-
-		return new PendingConfirmationResponse(req.Email!);
 	}
 
 	public async Task<Result<AuthResponse>> ConfirmEmailAsync(ConfirmEmailRequest req)
 	{
-		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == req.Email);
+		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == req.Email && !u.IsDeleted);
 		if (user is null || user.IsEmailConfirmed)
 			return Error.Validation("Неверный или истёкший код");
 
@@ -67,14 +71,13 @@ public class AuthService(
 
 		user.IsEmailConfirmed = true;
 		await userRepo.UpdateAsync(user);
-		await emailTokenRepo.DeleteAllForUserAsync(user.UsrId, TokenTypeConfirmation);
 
 		return await IssueTokensAsync(user);
 	}
 
 	public async Task<Result> ResendConfirmationAsync(string email)
 	{
-		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == email);
+		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == email && !u.IsDeleted);
 		if (user is null || user.IsEmailConfirmed)
 			return Result.Success();
 
@@ -83,6 +86,7 @@ public class AuthService(
 			TokenTypeConfirmation
 		);
 
+		// INFO: Frontend should create cooldown logic
 		if (existing is not null)
 			return Result.Success();
 
@@ -123,8 +127,11 @@ public class AuthService(
 	{
 		var hash = HashToken(refreshToken);
 		var stored = await refreshRepo.GetByTokenHashAsync(hash);
-		if (stored is null)
+		
+		if (stored is null) {
+			logger.LogWarning("Invalid refresh token: {Hash}", hash);
 			return Error.Unauthorized("Refresh token не найден или уже использован");
+		}
 
 		if (stored.RefreshExpiresAt < DateTime.UtcNow)
 		{
@@ -154,7 +161,7 @@ public class AuthService(
 	{
 		var user = await userRepo
 			.QueryLite()
-			.FirstOrDefaultAsync(u => u.UsrEmail == email && u.IsEmailConfirmed);
+			.FirstOrDefaultAsync(u => u.UsrEmail == email && u.IsEmailConfirmed && !u.IsDeleted);
 		if (user is null)
 			return Result.Success();
 
@@ -163,6 +170,7 @@ public class AuthService(
 			TokenTypePasswordReset
 		);
 
+		// INFO: Frontend should create cooldown logic
 		if (existing is not null)
 			return Result.Success();
 
@@ -183,7 +191,7 @@ public class AuthService(
 
 	public async Task<Result> ResetPasswordAsync(ResetPasswordRequest req)
 	{
-		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == req.Email);
+		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == req.Email && !u.IsDeleted);
 		if (user is null)
 			return Error.Validation("Такой email не зарегистрирован");
 
@@ -193,7 +201,7 @@ public class AuthService(
 
 		user.UsrPasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
 		await userRepo.UpdateAsync(user);
-		await emailTokenRepo.DeleteAllForUserAsync(user.UsrId, TokenTypePasswordReset);
+
 		await refreshRepo.RevokeAllForUserAsync(user.UsrId);
 		return Result.Success();
 	}
@@ -222,6 +230,7 @@ public class AuthService(
 			return Error.Validation("Токен не найден или истёк");
 
 		token.AttemptCount++;
+
 		if (token.AttemptCount >= MaxOtpAttempts)
 		{
 			await emailTokenRepo.DeleteAllForUserAsync(usrId, tokenType);
@@ -231,15 +240,15 @@ public class AuthService(
 		if (token.TokenHash != HashToken(code.Trim()))
 		{
 			await emailTokenRepo.UpdateAsync(token);
-			return Error.Validation(
-				"Неверный или истёкший код, осталось попыток: "
-					+ (MaxOtpAttempts - token.AttemptCount)
-			);
+			return Error.Validation("Неверный или истёкший код");
 		}
+
+		await emailTokenRepo.DeleteAllForUserAsync(usrId, tokenType);
 
 		return Result.Success();
 	}
 
+	// WARNING: Not have validation for user existence, should be done before calling this method
 	private async Task<AuthResponse> IssueTokensAsync(Usr user)
 	{
 		var fullUser = await userRepo.QueryHard().FirstAsync(u => u.UsrId == user.UsrId);

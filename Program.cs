@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Net;
 using System.Threading.RateLimiting;
 using CrmWebApi;
 using CrmWebApi.Exceptions;
@@ -135,6 +136,9 @@ builder.Services.AddExceptionHandler<DbExceptionHandler>();
 // Глобальный обработчик исключений
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 // CORS: same-origin в проде, localhost для локальной разработки
 builder.Services.AddCors(options =>
 {
@@ -142,11 +146,7 @@ builder.Services.AddCors(options =>
 		"AllowFrontend",
 		policy =>
 			policy
-				.WithOrigins(
-					"https://crmwebapi.ru",
-					"http://localhost:3000",
-					"http://localhost:3001"
-				)
+				.WithOrigins(corsOrigins)
 				.AllowAnyHeader()
 				.AllowAnyMethod()
 				.AllowCredentials()
@@ -208,9 +208,10 @@ var app = builder.Build();
 var forwardedOptions = new ForwardedHeadersOptions
 {
 	ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+	ForwardLimit = 1
 };
-forwardedOptions.KnownIPNetworks.Clear(); // Доверяем любому прокси в Docker-сети
-forwardedOptions.KnownProxies.Clear();
+
+forwardedOptions.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
 app.UseForwardedHeaders(forwardedOptions);
 
 // HTTPS-редирект и HSTS первыми — до любой обработки контента
