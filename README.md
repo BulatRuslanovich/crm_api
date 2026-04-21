@@ -81,11 +81,3 @@ GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает:
 
 - **[API.md](API.md)** — справочник REST API: все эндпоинты, TS-интерфейсы, примеры
 - **[DEV.md](DEV.md)** — памятка разработчику: как поднять проект локально
-
----
-
-<div align="center">
-
-MIT © [BulatRuslanovich](https://github.com/BulatRuslanovich)
-
-</div>
