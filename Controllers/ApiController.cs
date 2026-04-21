@@ -50,9 +50,9 @@ public abstract class ApiController : ControllerBase
 			return false;
 		}
 
-		if (User.IsInRole("Admin") || User.IsInRole("Director"))
+		if (User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.Director))
 			scope = Scope.ForAll(usrId);
-		else if (User.IsInRole("Manager"))
+		else if (User.IsInRole(RoleNames.Manager))
 			scope = Scope.ForDepartment(usrId);
 		else
 			scope = Scope.ForOwn(usrId);

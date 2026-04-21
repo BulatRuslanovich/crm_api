@@ -13,4 +13,5 @@ public class ActivQuery
 	public DateTimeOffset? DateFrom { get; set; }
 	public DateTimeOffset? DateTo { get; set; }
 	public int? UsrId { get; set; }
+	public bool IncludeTotal { get; set; } = true;
 }

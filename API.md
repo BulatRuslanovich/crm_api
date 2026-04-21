@@ -66,6 +66,7 @@ interface PagedResponse<T> {
 ```
 
 Query-параметры: `page` (default: 1), `pageSize` (default: 20, max обычно 100).
+Для списочных эндпоинтов доступен `includeTotal=false`: API пропускает `COUNT(*)`, возвращает `totalCount: 0` и `totalPages: 0`, но сохраняет тот же формат ответа.
 
 ### Роли и доступ
 
@@ -329,6 +330,7 @@ interface LoginRequest {
 |---|---|---|---|
 | `page` | `number` | `1` | Номер страницы |
 | `pageSize` | `number` | `20` | Размер (1..100) |
+| `includeTotal` | `boolean` | `true` | Если `false`, не выполнять `COUNT(*)` |
 
 **Success Response (200):**
 
@@ -524,7 +526,7 @@ type Response = PolicyResponse[];
 
 ### GET /api/departments
 
-**Query:** `page` (default: 1), `pageSize` (default: 50, max 200).
+**Query:** `page` (default: 1), `pageSize` (default: 50, max 200), `includeTotal` (default: true).
 
 **Success Response (200):**
 
@@ -610,7 +612,7 @@ Soft-удаление.
 
 Список организаций (пагинация + поиск по имени/ИНН/адресу).
 
-**Query:** `page`, `pageSize` (1..100), `search`.
+**Query:** `page`, `pageSize` (1..1000), `search`, `includeTotal`.
 
 **Success Response (200):**
 
@@ -723,7 +725,7 @@ type Response = OrgTypeResponse[];
 
 ### GET /api/physes
 
-**Query:** `page`, `pageSize` (1..100), `search`.
+**Query:** `page`, `pageSize` (1..100), `search`, `includeTotal`.
 
 **Success Response (200):**
 
@@ -881,7 +883,7 @@ interface CreateSpecRequest {
 
 ### GET /api/drugs
 
-**Query:** `page`, `pageSize` (1..100), `search`.
+**Query:** `page`, `pageSize` (1..100), `search`, `includeTotal`.
 
 **Success Response (200):**
 
@@ -984,6 +986,8 @@ interface ActivQuery {
   statuses?: number[];     // ?statuses=1&statuses=2
   dateFrom?: string;       // ISO 8601 DateTimeOffset
   dateTo?: string;
+  usrId?: number;
+  includeTotal?: boolean;  // default true; false отключает COUNT(*)
 }
 ```
 

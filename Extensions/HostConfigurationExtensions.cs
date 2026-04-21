@@ -111,6 +111,21 @@ public static class HostConfigurationExtensions
 		return services;
 	}
 
+	public static IApplicationBuilder UseApiCompressionGuards(this IApplicationBuilder app)
+	{
+		app.Use(
+			async (ctx, next) =>
+			{
+				if (ctx.Request.Path.StartsWithSegments("/api/auth"))
+					ctx.Request.Headers.Remove("Accept-Encoding");
+
+				await next();
+			}
+		);
+
+		return app;
+	}
+
 	public static IApplicationBuilder UseApiForwardedHeaders(this IApplicationBuilder app)
 	{
 		var forwardedOptions = new ForwardedHeadersOptions
@@ -120,6 +135,7 @@ public static class HostConfigurationExtensions
 		};
 
 		forwardedOptions.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
+		forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
 		app.UseForwardedHeaders(forwardedOptions);
 
 		return app;

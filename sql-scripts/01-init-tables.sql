@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE org_type (
     org_type_id   INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     org_type_name VARCHAR(100) NOT NULL UNIQUE
@@ -196,6 +198,38 @@ WHERE is_deleted = FALSE;
 
 CREATE UNIQUE INDEX phys_usr_email_active
 ON phys(phys_email)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_org_name_trgm
+ON org USING gin (org_name gin_trgm_ops)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_org_address_trgm
+ON org USING gin (org_address gin_trgm_ops)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_phys_firstname_trgm
+ON phys USING gin (phys_firstname gin_trgm_ops)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_phys_lastname_trgm
+ON phys USING gin (phys_lastname gin_trgm_ops)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_phys_middlename_trgm
+ON phys USING gin (phys_middlename gin_trgm_ops)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_drug_name_trgm
+ON drug USING gin (drug_name gin_trgm_ops)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_drug_brand_trgm
+ON drug USING gin (drug_brand gin_trgm_ops)
+WHERE is_deleted = FALSE;
+
+CREATE INDEX idx_activ_description_trgm
+ON activ USING gin (activ_description gin_trgm_ops)
 WHERE is_deleted = FALSE;
 
 

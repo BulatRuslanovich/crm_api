@@ -1,3 +1,4 @@
+using CrmWebApi.Common;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Phys;
 using CrmWebApi.DTOs.Spec;
@@ -27,7 +28,7 @@ public class PhysesController(IPhysService physService) : ApiController
 		FromResult(await physService.GetSpecByIdAsync(id));
 
 	[HttpPost("specs")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Create specialty")]
 	[ProducesResponseType<SpecResponse>(StatusCodes.Status201Created)]
 	public async Task<IActionResult> CreateSpec([FromBody] CreateSpecRequest req)
@@ -37,7 +38,7 @@ public class PhysesController(IPhysService physService) : ApiController
 	}
 
 	[HttpDelete("specs/{id:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Delete specialty")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -53,10 +54,16 @@ public class PhysesController(IPhysService physService) : ApiController
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
 		[FromQuery] int pageSize = 20,
-		[FromQuery] string? search = null
+		[FromQuery] string? search = null,
+		[FromQuery] bool includeTotal = true
 	) =>
 		FromResult(
-			await physService.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 100), search)
+			await physService.GetAllAsync(
+				Math.Max(page, 1),
+				Math.Clamp(pageSize, 1, 100),
+				search,
+				includeTotal
+			)
 		);
 
 	[HttpGet("{id:int}")]
@@ -67,7 +74,7 @@ public class PhysesController(IPhysService physService) : ApiController
 		FromResult(await physService.GetByIdAsync(id));
 
 	[HttpPost]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Create contact")]
 	[ProducesResponseType<PhysResponse>(StatusCodes.Status201Created)]
 	public async Task<IActionResult> Create([FromBody] CreatePhysRequest req)
@@ -77,7 +84,7 @@ public class PhysesController(IPhysService physService) : ApiController
 	}
 
 	[HttpPut("{id:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Update contact")]
 	[EndpointDescription("Updates contact fields. Null fields are not changed. Admin only.")]
 	[ProducesResponseType<PhysResponse>(StatusCodes.Status200OK)]
@@ -86,7 +93,7 @@ public class PhysesController(IPhysService physService) : ApiController
 		FromResult(await physService.UpdateAsync(id, req));
 
 	[HttpDelete("{id:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Delete contact")]
 	[EndpointDescription("Soft-deletes a contact. Admin only.")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -95,14 +102,14 @@ public class PhysesController(IPhysService physService) : ApiController
 		FromResult(await physService.DeleteAsync(id));
 
 	[HttpPost("{physId:int}/orgs/{orgId:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Link contact to organization")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	public async Task<IActionResult> LinkOrg(int physId, int orgId) =>
 		FromResult(await physService.LinkOrgAsync(physId, orgId));
 
 	[HttpDelete("{physId:int}/orgs/{orgId:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Unlink contact from organization")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	public async Task<IActionResult> UnlinkOrg(int physId, int orgId) =>

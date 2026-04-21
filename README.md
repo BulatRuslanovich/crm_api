@@ -6,6 +6,7 @@
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-optional-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 
 </div>
@@ -14,7 +15,7 @@
 
 ## О проекте
 
-Бэкенд для CRM фарм компаний. Поддерживает ролевую модель доступа, email-подтверждение.
+Бэкенд для CRM фарм компаний. Поддерживает ролевую модель доступа, email-подтверждение, JWT refresh rotation, health checks и Prometheus metrics.
 
 
 ## Стек технологий
@@ -25,11 +26,11 @@
 | База данных | PostgreSQL 17, Entity Framework Core 9 |
 | Аутентификация | JWT Bearer, BCrypt, Email OTP |
 | Валидация | FluentValidation |
-| Кэширование | HybridCache (in-memory + distributed) |
+| Кэширование | HybridCache; in-memory локально, Redis в production compose |
 | Логирование | Serilog |
 | Email | MailKit (Gmail SMTP) |
 | Документация | OpenAPI + Scalar |
-| Инфраструктура | Docker, Caddy, GitHub Actions |
+| Инфраструктура | Docker, Caddy, GitHub Actions CI |
 
 ## Архитектура
 
@@ -63,6 +64,18 @@ Controllers  →  Services  →  Repositories  →  EF Core / PostgreSQL
 
 Защищённые эндпоинты требуют заголовок `Authorization: Bearer <access_token>`.
 В dev-режиме доступен Scalar UI: `http://localhost:5000/scalar/v1`.
+
+Для тяжелых списков доступен query-параметр `includeTotal=false`: API пропустит `COUNT(*)` и вернет `totalCount: 0`, сохранив форму ответа.
+
+## CI
+
+GitHub Actions workflow [ci.yml](.github/workflows/ci.yml) запускает:
+
+- `dotnet restore`
+- `dotnet format --verify-no-changes`
+- `dotnet build -c Release`
+- `dotnet test -c Release`
+- `dotnet list package --vulnerable --include-transitive`
 
 ## Документация
 

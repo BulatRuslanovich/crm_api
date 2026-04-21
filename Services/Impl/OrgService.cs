@@ -22,11 +22,12 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 	public async Task<Result<PagedResponse<OrgResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		string? search = null
+		string? search = null,
+		bool includeTotal = true
 	)
 	{
 		return await cache.GetOrCreateAsync(
-			$"orgs:{page}:{pageSize}:{search}",
+			$"orgs:{page}:{pageSize}:{search}:{includeTotal}",
 			async ct =>
 			{
 				var query = repo.QueryHard();
@@ -41,13 +42,22 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 					);
 				}
 
-				var total = await query.CountAsync(ct);
-				var entities = await query
+				var total = includeTotal ? await query.CountAsync(ct) : 0;
+				var items = await query
 					.OrderBy(o => o.OrgId)
 					.Skip((page - 1) * pageSize)
 					.Take(pageSize)
+					.Select(o => new OrgResponse(
+						o.OrgId,
+						o.OrgTypeId,
+						o.OrgType.OrgTypeName,
+						o.OrgName,
+						o.OrgInn,
+						o.OrgLatitude,
+						o.OrgLongitude,
+						o.OrgAddress
+					))
 					.ToListAsync(ct);
-				var items = entities.Select(OrgResponse.From).ToList();
 				return new PagedResponse<OrgResponse>(items, page, pageSize, total);
 			},
 			tags: Tags
@@ -56,10 +66,22 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 
 	public async Task<Result<OrgResponse>> GetByIdAsync(int id)
 	{
-		var org = await repo.QueryHard().FirstOrDefaultAsync(o => o.OrgId == id);
+		var org = await repo.QueryHard()
+			.Where(o => o.OrgId == id)
+			.Select(o => new OrgResponse(
+				o.OrgId,
+				o.OrgTypeId,
+				o.OrgType.OrgTypeName,
+				o.OrgName,
+				o.OrgInn,
+				o.OrgLatitude,
+				o.OrgLongitude,
+				o.OrgAddress
+			))
+			.FirstOrDefaultAsync();
 		if (org is null)
 			return Error.NotFound($"Организация {id} не найдена");
-		return OrgResponse.From(org);
+		return org;
 	}
 
 	public async Task<Result<OrgResponse>> CreateAsync(CreateOrgRequest req)

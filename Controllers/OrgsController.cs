@@ -1,3 +1,4 @@
+using CrmWebApi.Common;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Org;
 using CrmWebApi.DTOs.OrgType;
@@ -25,10 +26,16 @@ public class OrgsController(IOrgService service) : ApiController
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
 		[FromQuery] int pageSize = 20,
-		[FromQuery] string? search = null
+		[FromQuery] string? search = null,
+		[FromQuery] bool includeTotal = true
 	) =>
 		FromResult(
-			await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 1000), search)
+			await service.GetAllAsync(
+				Math.Max(page, 1),
+				Math.Clamp(pageSize, 1, 1000),
+				search,
+				includeTotal
+			)
 		);
 
 	[HttpGet("{id:int}")]
@@ -38,7 +45,7 @@ public class OrgsController(IOrgService service) : ApiController
 	public async Task<IActionResult> GetById(int id) => FromResult(await service.GetByIdAsync(id));
 
 	[HttpPost]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Create organization")]
 	[EndpointDescription("Creates a new organization. Admin only.")]
 	[ProducesResponseType<OrgResponse>(StatusCodes.Status201Created)]
@@ -49,7 +56,7 @@ public class OrgsController(IOrgService service) : ApiController
 	}
 
 	[HttpPut("{id:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Update organization")]
 	[EndpointDescription("Updates organization fields. Null fields are not changed. Admin only.")]
 	[ProducesResponseType<OrgResponse>(StatusCodes.Status200OK)]
@@ -58,7 +65,7 @@ public class OrgsController(IOrgService service) : ApiController
 		FromResult(await service.UpdateAsync(id, req));
 
 	[HttpDelete("{id:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Delete organization")]
 	[EndpointDescription("Soft-deletes an organization. Admin only.")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]

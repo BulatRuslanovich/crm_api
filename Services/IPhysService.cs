@@ -10,7 +10,8 @@ public interface IPhysService
 	public Task<Result<PagedResponse<PhysResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		string? search
+		string? search,
+		bool includeTotal = true
 	);
 	public Task<Result<PhysResponse>> GetByIdAsync(int id);
 	public Task<Result<PhysResponse>> CreateAsync(CreatePhysRequest req);

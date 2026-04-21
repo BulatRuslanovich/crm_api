@@ -10,10 +10,14 @@ namespace CrmWebApi.Services.Impl;
 public class DepartmentService(IDepartmentRepository repo, ILogger<DepartmentService> logger)
 	: IDepartmentService
 {
-	public async Task<Result<PagedResponse<DepartmentResponse>>> GetAllAsync(int page, int pageSize)
+	public async Task<Result<PagedResponse<DepartmentResponse>>> GetAllAsync(
+		int page,
+		int pageSize,
+		bool includeTotal = true
+	)
 	{
 		var query = repo.Query();
-		var total = await query.CountAsync();
+		var total = includeTotal ? await query.CountAsync() : 0;
 		var items = await query
 			.OrderBy(d => d.DepartmentId)
 			.Skip((page - 1) * pageSize)

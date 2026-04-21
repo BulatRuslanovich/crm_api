@@ -23,7 +23,7 @@ public class UserRepository(AppDbContext db) : IUserRepository
 			),
 			_ => baseQuery.Where(_ => false),
 		};
-	} 
+	}
 
 
 	public IQueryable<Usr> QueryHard() =>
@@ -35,6 +35,8 @@ public class UserRepository(AppDbContext db) : IUserRepository
 			.AsNoTracking();
 
 	public IQueryable<Usr> QueryLite() => db.Usrs.Where(u => !u.IsDeleted).AsNoTracking();
+
+	public IQueryable<Usr> QueryForUpdate() => db.Usrs.Where(u => !u.IsDeleted);
 
 	public Task<bool> ExistsAsync(Expression<Func<Usr, bool>> predicate) =>
 		db.Usrs.AnyAsync(predicate);
@@ -57,7 +59,8 @@ public class UserRepository(AppDbContext db) : IUserRepository
 
 	public async Task UpdateAsync(Usr entity)
 	{
-		db.Usrs.Update(entity);
+		if (db.Entry(entity).State == EntityState.Detached)
+			db.Usrs.Update(entity);
 		await db.SaveChangesAsync();
 	}
 

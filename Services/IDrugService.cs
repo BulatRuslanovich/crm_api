@@ -9,7 +9,8 @@ public interface IDrugService
 	public Task<Result<PagedResponse<DrugResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		string? search
+		string? search,
+		bool includeTotal = true
 	);
 	public Task<Result<DrugResponse>> GetByIdAsync(int id);
 	public Task<Result<DrugResponse>> CreateAsync(CreateDrugRequest req);

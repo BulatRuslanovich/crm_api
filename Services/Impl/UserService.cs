@@ -22,10 +22,15 @@ public class UserService(
 		Expiration = TimeSpan.FromMinutes(10),
 	};
 
-	public async Task<Result<PagedResponse<UserResponse>>> GetAllAsync(int page, int pageSize, Scope scope)
+	public async Task<Result<PagedResponse<UserResponse>>> GetAllAsync(
+		int page,
+		int pageSize,
+		Scope scope,
+		bool includeTotal = true
+	)
 	{
 		var query = repo.QueryForScope(scope);
-		var total = await query.CountAsync();
+		var total = includeTotal ? await query.CountAsync() : 0;
 		var entities = await query
 			.OrderBy(u => u.UsrId)
 			.Skip((page - 1) * pageSize)
@@ -65,7 +70,7 @@ public class UserService(
 
 	public async Task<Result<UserResponse>> UpdateAsync(int id, UpdateUserRequest req)
 	{
-		var user = await repo.QueryLite().FirstOrDefaultAsync(u => u.UsrId == id);
+		var user = await repo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrId == id);
 		if (user is null)
 			return Error.NotFound($"Пользователь {id} не найден");
 
@@ -78,7 +83,7 @@ public class UserService(
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var user = await repo.QueryLite().FirstOrDefaultAsync(u => u.UsrId == id);
+		var user = await repo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrId == id);
 		if (user is null)
 			return Error.NotFound($"Пользователь {id} не найден");
 
@@ -91,7 +96,7 @@ public class UserService(
 
 	public async Task<Result> ChangePasswordAsync(int id, ChangePasswordRequest req)
 	{
-		var user = await repo.QueryLite().FirstOrDefaultAsync(u => u.UsrId == id);
+		var user = await repo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrId == id);
 		if (user is null)
 			return Error.NotFound($"Пользователь {id} не найден");
 

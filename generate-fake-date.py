@@ -1,3 +1,4 @@
+import os
 import random
 from datetime import timedelta
 
@@ -12,11 +13,11 @@ from faker.providers import internet
 fake.add_provider(internet)
 
 conn = psycopg2.connect(
-    dbname="crm_db",
-    user="crm_user",
-    password="12345678lol",
-    host="localhost",
-    port=5432
+    dbname=os.getenv("DB_NAME", "crm_db"),
+    user=os.getenv("DB_USER", "crm_user"),
+    password=os.getenv("DB_PASSWORD", "change_me_dev_password"),
+    host=os.getenv("DB_HOST", "localhost"),
+    port=int(os.getenv("DB_PORT", "5432"))
 )
 
 cur = conn.cursor()

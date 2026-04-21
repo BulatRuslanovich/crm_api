@@ -1,0 +1,237 @@
+using System.Linq.Expressions;
+using System.Security.Cryptography;
+using System.Text;
+using CrmWebApi.Common;
+using CrmWebApi.Data.Entities;
+using CrmWebApi.DTOs.Auth;
+using CrmWebApi.Options;
+using CrmWebApi.Repositories;
+using CrmWebApi.Services;
+using CrmWebApi.Services.Impl;
+using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.Extensions.Logging.Abstractions;
+
+namespace CrmWebApi.Tests;
+
+public class AuthServiceTests
+{
+	[Fact]
+	public async Task RefreshAsync_ConsumesRefreshTokenOnlyOnce()
+	{
+		var rawRefreshToken = "raw-refresh-token";
+		var user = TestUsers.UserWithRole(1, "Admin");
+		var refreshRepo = new InMemoryRefreshRepository(
+			new Refresh
+			{
+				UsrId = user.UsrId,
+				RefreshTokenHash = Sha256(rawRefreshToken),
+				RefreshExpiresAt = DateTime.UtcNow.AddMinutes(5),
+			}
+		);
+		var service = CreateService([user], refreshRepo);
+
+		var first = await service.RefreshAsync(rawRefreshToken);
+		var second = await service.RefreshAsync(rawRefreshToken);
+
+		Assert.True(first.IsSuccess);
+		Assert.NotNull(first.Value?.RefreshToken);
+		Assert.False(second.IsSuccess);
+	}
+
+	[Fact]
+	public async Task ResetPasswordAsync_ReturnsSuccessForUnknownEmail()
+	{
+		var service = CreateService([], new InMemoryRefreshRepository());
+
+		var result = await service.ResetPasswordAsync(
+			new ResetPasswordRequest("missing@example.com", "123456", "newPassword1")
+		);
+
+		Assert.True(result.IsSuccess);
+	}
+
+	private static AuthService CreateService(
+		IEnumerable<Usr> users,
+		IRefreshRepository refreshRepository
+	) =>
+		new(
+			new InMemoryUserRepository(users),
+			refreshRepository,
+			new InMemoryEmailTokenRepository(),
+			new NoopEmailService(),
+			Microsoft.Extensions.Options.Options.Create(
+				new JwtOptions
+				{
+					Secret = "test-secret-with-more-than-32-characters",
+					Issuer = "issuer",
+					Audience = "audience",
+				}
+			),
+			Microsoft.Extensions.Options.Options.Create(
+				new AuthOptions { OtpHashSecret = "otp-secret-with-more-than-32-characters" }
+			),
+			NullLogger<AuthService>.Instance
+		);
+
+	private static string Sha256(string value)
+	{
+		var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+		return Convert.ToHexString(bytes).ToLowerInvariant();
+	}
+
+	private sealed class InMemoryUserRepository(IEnumerable<Usr> users) : IUserRepository
+	{
+		private readonly List<Usr> users = users.ToList();
+
+		public IQueryable<Usr> QueryForScope(Scope scope) => QueryHard();
+
+		public IQueryable<Usr> QueryHard() => AsAsyncQueryable(users.Where(u => !u.IsDeleted));
+
+		public IQueryable<Usr> QueryLite() => AsAsyncQueryable(users.Where(u => !u.IsDeleted));
+
+		public IQueryable<Usr> QueryForUpdate() => AsAsyncQueryable(users.Where(u => !u.IsDeleted));
+
+		public Task<bool> ExistsAsync(Expression<Func<Usr, bool>> predicate) =>
+			Task.FromResult(users.AsQueryable().Any(predicate));
+
+		public Task<Usr> AddAsync(Usr entity)
+		{
+			users.Add(entity);
+			return Task.FromResult(entity);
+		}
+
+		public Task<Usr> AddWithPoliciesAsync(Usr entity, IEnumerable<int> policyIds)
+		{
+			users.Add(entity);
+			return Task.FromResult(entity);
+		}
+
+		public Task UpdateAsync(Usr entity) => Task.CompletedTask;
+
+		public Task AddPoliciesAsync(IEnumerable<UsrPolicy> policies) => Task.CompletedTask;
+
+		public Task LinkPolicyAsync(int userId, int policyId) => Task.CompletedTask;
+
+		public Task UnlinkPolicyAsync(int userId, int policyId) => Task.CompletedTask;
+
+		public IQueryable<Policy> QueryPolicies() => Enumerable.Empty<Policy>().AsQueryable();
+	}
+
+	private sealed class InMemoryRefreshRepository(params Refresh[] refreshes) : IRefreshRepository
+	{
+		private readonly List<Refresh> refreshes = refreshes.ToList();
+
+		public Task<Refresh> AddAsync(Refresh entity)
+		{
+			refreshes.Add(entity);
+			return Task.FromResult(entity);
+		}
+
+		public Task DeleteAsync(Refresh entity)
+		{
+			refreshes.Remove(entity);
+			return Task.CompletedTask;
+		}
+
+		public Task<Refresh?> GetByTokenHashAsync(string tokenHash) =>
+			Task.FromResult(refreshes.FirstOrDefault(r => r.RefreshTokenHash == tokenHash));
+
+		public Task<Refresh?> ConsumeByTokenHashAsync(string tokenHash)
+		{
+			var refresh = refreshes.FirstOrDefault(r => r.RefreshTokenHash == tokenHash);
+			if (refresh is not null)
+				refreshes.Remove(refresh);
+			return Task.FromResult(refresh);
+		}
+
+		public Task RevokeAllForUserAsync(int usrId)
+		{
+			refreshes.RemoveAll(r => r.UsrId == usrId);
+			return Task.CompletedTask;
+		}
+	}
+
+	private sealed class InMemoryEmailTokenRepository : IEmailTokenRepository
+	{
+		public Task<EmailToken> AddAsync(EmailToken entity) => Task.FromResult(entity);
+
+		public Task UpdateAsync(EmailToken entity) => Task.CompletedTask;
+
+		public Task DeleteAsync(EmailToken entity) => Task.CompletedTask;
+
+		public Task<EmailToken?> GetValidTokenAsync(string tokenHash, int tokenType) =>
+			Task.FromResult<EmailToken?>(null);
+
+		public Task<EmailToken?> GetActiveByUserAndTypeAsync(int usrId, int tokenType) =>
+			Task.FromResult<EmailToken?>(null);
+
+		public Task DeleteAllForUserAsync(int usrId, int tokenType) => Task.CompletedTask;
+	}
+
+	private sealed class NoopEmailService : IEmailService
+	{
+		public Task SendEmailConfirmationAsync(string toEmail, string toName, string code) =>
+			Task.CompletedTask;
+
+		public Task SendPasswordResetAsync(string toEmail, string toName, string code) =>
+			Task.CompletedTask;
+	}
+
+	private static IQueryable<T> AsAsyncQueryable<T>(IEnumerable<T> source) =>
+		new TestAsyncEnumerable<T>(source);
+
+	private sealed class TestAsyncQueryProvider<TEntity>(IQueryProvider inner) : IAsyncQueryProvider
+	{
+		public IQueryable CreateQuery(Expression expression) =>
+			new TestAsyncEnumerable<TEntity>(expression);
+
+		public IQueryable<TElement> CreateQuery<TElement>(Expression expression) =>
+			new TestAsyncEnumerable<TElement>(expression);
+
+		public object? Execute(Expression expression) => inner.Execute(expression);
+
+		public TResult Execute<TResult>(Expression expression) => inner.Execute<TResult>(expression);
+
+		public TResult ExecuteAsync<TResult>(Expression expression, CancellationToken cancellationToken)
+		{
+			var resultType = typeof(TResult).GetGenericArguments()[0];
+			var result = typeof(IQueryProvider)
+				.GetMethod(nameof(IQueryProvider.Execute), 1, [typeof(Expression)])!
+				.MakeGenericMethod(resultType)
+				.Invoke(this, [expression]);
+
+			return (TResult)
+				typeof(Task)
+					.GetMethod(nameof(Task.FromResult))!
+					.MakeGenericMethod(resultType)
+					.Invoke(null, [result])!;
+		}
+	}
+
+	private sealed class TestAsyncEnumerable<T> : EnumerableQuery<T>, IAsyncEnumerable<T>, IQueryable<T>
+	{
+		public TestAsyncEnumerable(IEnumerable<T> enumerable)
+			: base(enumerable) { }
+
+		public TestAsyncEnumerable(Expression expression)
+			: base(expression) { }
+
+		public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
+			new TestAsyncEnumerator<T>(this.AsEnumerable().GetEnumerator());
+
+		IQueryProvider IQueryable.Provider => new TestAsyncQueryProvider<T>(this);
+	}
+
+	private sealed class TestAsyncEnumerator<T>(IEnumerator<T> inner) : IAsyncEnumerator<T>
+	{
+		public T Current => inner.Current;
+
+		public ValueTask DisposeAsync()
+		{
+			inner.Dispose();
+			return ValueTask.CompletedTask;
+		}
+
+		public ValueTask<bool> MoveNextAsync() => ValueTask.FromResult(inner.MoveNext());
+	}
+}

@@ -34,15 +34,24 @@ services:
       Jwt__Issuer: PharmaCrmApi
       Jwt__Audience: PharmaCrmClient
       Auth__RequireEmailConfirmation: ${REQUIRE_EMAIL_CONFIRMATION:-true}
+      Auth__OtpHashSecret: ${OTP_HASH_SECRET:-}
+      Cache__RedisConnectionString: ${REDIS_CONNECTION_STRING:-redis:6379,abortConnect=false}
       Email__Host: smtp.gmail.com
       Email__Port: "587"
-      Email__Username: gikirilcva@gmail.com
+      Email__Username: ${EMAIL_USERNAME}
       Email__Password: ${EMAIL_PASSWORD}
-      Email__FromAddress: gikirilcva@gmail.com
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS}
       Email__FromName: CRM System
     networks:
       - internal
       - public
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    networks:
+      - internal
 
   frontend:
     image: ${FRONTEND_IMAGE:-ghcr.io/bulatruslanovich/crm-web-portal:latest}

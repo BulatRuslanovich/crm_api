@@ -6,8 +6,10 @@ using CrmWebApi.Common;
 using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs.Auth;
 using CrmWebApi.DTOs.User;
+using CrmWebApi.Options;
 using CrmWebApi.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CrmWebApi.Services.Impl;
@@ -17,7 +19,8 @@ public class AuthService(
 	IRefreshRepository refreshRepo,
 	IEmailTokenRepository emailTokenRepo,
 	IEmailService emailService,
-	IConfiguration config,
+	IOptions<JwtOptions> jwtOptions,
+	IOptions<AuthOptions> authOptions,
 	ILogger<AuthService> logger
 ) : IAuthService
 {
@@ -65,7 +68,7 @@ public class AuthService(
 
 	public async Task<Result<AuthResponse>> ConfirmEmailAsync(ConfirmEmailRequest req)
 	{
-		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == req.Email && !u.IsDeleted);
+		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail == req.Email);
 		if (user is null || user.IsEmailConfirmed)
 			return Error.Validation("Неверный или истёкший код");
 
@@ -133,20 +136,16 @@ public class AuthService(
 	public async Task<Result<AuthResponse>> RefreshAsync(string refreshToken)
 	{
 		var hash = HashToken(refreshToken);
-		var stored = await refreshRepo.GetByTokenHashAsync(hash);
-		
-		if (stored is null) {
-			logger.LogWarning("Invalid refresh token: {Hash}", hash);
+		var stored = await refreshRepo.ConsumeByTokenHashAsync(hash);
+
+		if (stored is null)
+		{
+			logger.LogWarning("Invalid or already consumed refresh token");
 			return Error.Unauthorized("Refresh token не найден или уже использован");
 		}
 
 		if (stored.RefreshExpiresAt < DateTime.UtcNow)
-		{
-			await refreshRepo.DeleteAsync(stored);
 			return Error.Unauthorized("Refresh token истёк");
-		}
-
-		await refreshRepo.DeleteAsync(stored);
 
 		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrId == stored.UsrId);
 		if (user is null)
@@ -198,9 +197,9 @@ public class AuthService(
 
 	public async Task<Result> ResetPasswordAsync(ResetPasswordRequest req)
 	{
-		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == req.Email && !u.IsDeleted);
+		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail == req.Email);
 		if (user is null)
-			return Error.Validation("Такой email не зарегистрирован");
+			return Result.Success();
 
 		var otpResult = await VerifyOtpAsync(user.UsrId, req.Code, TokenTypePasswordReset);
 		if (!otpResult.IsSuccess)
@@ -220,7 +219,7 @@ public class AuthService(
 		var stored = new EmailToken
 		{
 			UsrId = user.UsrId,
-			TokenHash = HashToken(code),
+			TokenHash = HashOtp(code),
 			TokenType = tokenType,
 			ExpiresAt = DateTime.UtcNow.AddHours(expiryHours),
 		};
@@ -244,7 +243,7 @@ public class AuthService(
 			return Error.Validation("Слишком много попыток. Запросите новый код.");
 		}
 
-		if (token.TokenHash != HashToken(code.Trim()))
+		if (!FixedTimeEquals(token.TokenHash, HashOtp(code)))
 		{
 			await emailTokenRepo.UpdateAsync(token);
 			return Error.Validation("Неверный или истёкший код");
@@ -267,10 +266,7 @@ public class AuthService(
 
 	private string GenerateAccessToken(Usr user)
 	{
-		var secret = config["Jwt:Secret"]!;
-		var issuer = config["Jwt:Issuer"]!;
-		var audience = config["Jwt:Audience"]!;
-		var ttl = int.Parse(config["Jwt:AccessTokenTtlMinutes"] ?? "15");
+		var jwt = jwtOptions.Value;
 
 		var claims = new List<Claim>
 		{
@@ -282,13 +278,13 @@ public class AuthService(
 			user.UsrPolicies.Select(p => new Claim(ClaimTypes.Role, p.Policy.PolicyName))
 		);
 
-		var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+		var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret));
 		var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 		var token = new JwtSecurityToken(
-			issuer,
-			audience,
+			jwt.Issuer,
+			jwt.Audience,
 			claims,
-			expires: DateTime.UtcNow.AddMinutes(ttl),
+			expires: DateTime.UtcNow.AddMinutes(jwt.AccessTokenTtlMinutes),
 			signingCredentials: creds
 		);
 
@@ -297,7 +293,7 @@ public class AuthService(
 
 	private (string raw, Refresh stored) GenerateRefreshToken(int usrId)
 	{
-		var ttlDays = int.Parse(config["Jwt:RefreshTokenTtlDays"] ?? "7");
+		var ttlDays = jwtOptions.Value.RefreshTokenTtlDays;
 		var raw = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 		var stored = new Refresh
 		{
@@ -314,8 +310,28 @@ public class AuthService(
 		return Convert.ToHexString(bytes).ToLowerInvariant();
 	}
 
+	private string HashOtp(string code)
+	{
+		var secret = authOptions.Value.OtpHashSecret;
+		if (string.IsNullOrWhiteSpace(secret))
+			secret = jwtOptions.Value.Secret;
+
+		var bytes = HMACSHA256.HashData(
+			Encoding.UTF8.GetBytes(secret),
+			Encoding.UTF8.GetBytes(code.Trim())
+		);
+		return Convert.ToHexString(bytes).ToLowerInvariant();
+	}
+
+	private static bool FixedTimeEquals(string left, string right) =>
+		left.Length == right.Length
+		&& CryptographicOperations.FixedTimeEquals(
+			Encoding.UTF8.GetBytes(left),
+			Encoding.UTF8.GetBytes(right)
+		);
+
 	private bool IsEmailConfirmationRequired() =>
-		!bool.TryParse(config["Auth:RequireEmailConfirmation"], out var required) || required;
+		authOptions.Value.RequireEmailConfirmation;
 
 	private static string BuildDisplayName(string? first, string? last, string fallback)
 	{

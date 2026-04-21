@@ -45,7 +45,8 @@ public class ActivRepository(AppDbContext db) : IActivRepository
 
 	public async Task UpdateAsync(Activ entity)
 	{
-		db.Activs.Update(entity);
+		if (db.Entry(entity).State == EntityState.Detached)
+			db.Activs.Update(entity);
 		await db.SaveChangesAsync();
 	}
 

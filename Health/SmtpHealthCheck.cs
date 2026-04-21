@@ -1,26 +1,34 @@
+using CrmWebApi.Options;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 namespace CrmWebApi.Health;
 
-public class SmtpHealthCheck(IConfiguration config) : IHealthCheck
+public class SmtpHealthCheck(IOptions<EmailOptions> options) : IHealthCheck
 {
 	public async Task<HealthCheckResult> CheckHealthAsync(
 		HealthCheckContext context,
 		CancellationToken cancellationToken = default
 	)
 	{
-		var host = config["Email:Host"]!;
-		var port = int.Parse(config["Email:Port"] ?? "587");
-		var username = config["Email:Username"]!;
-		var password = config["Email:Password"]!;
+		var emailOptions = options.Value;
 
 		try
 		{
 			using var client = new SmtpClient();
-			await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cancellationToken);
-			await client.AuthenticateAsync(username, password, cancellationToken);
+			await client.ConnectAsync(
+				emailOptions.Host,
+				emailOptions.Port,
+				SecureSocketOptions.StartTls,
+				cancellationToken
+			);
+			await client.AuthenticateAsync(
+				emailOptions.Username,
+				emailOptions.Password,
+				cancellationToken
+			);
 			await client.DisconnectAsync(true, cancellationToken);
 			return HealthCheckResult.Healthy("SMTP connection OK");
 		}

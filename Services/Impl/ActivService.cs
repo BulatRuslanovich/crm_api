@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using CrmWebApi.Common;
 using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs;
@@ -13,6 +14,35 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 	: IActivService
 {
 	private static readonly string[] Tags = ["activs"];
+	private static readonly Expression<Func<Activ, ActivResponse>> ToResponse = a =>
+		new ActivResponse(
+			a.ActivId,
+			a.UsrId,
+			a.Usr.UsrLogin,
+			a.OrgId,
+			a.Org == null ? null : a.Org.OrgName,
+			a.PhysId,
+			a.Phys == null
+				? null
+				: (
+					a.Phys.PhysLastname
+					+ " "
+					+ a.Phys.PhysFirstname
+					+ (a.Phys.PhysMiddlename == null ? "" : " " + a.Phys.PhysMiddlename)
+				),
+			a.StatusId,
+			a.Status.StatusName,
+			a.ActivStart,
+			a.ActivEnd,
+			a.ActivDescription,
+			a.ActivDrugs.Select(ad => new DrugResponse(
+					ad.DrugId,
+					ad.Drug.DrugName,
+					ad.Drug.DrugBrand,
+					ad.Drug.DrugForm
+				))
+				.ToList()
+		);
 
 	public async Task<Result<PagedResponse<ActivResponse>>> GetAllAsync(
 		ActivQuery activQuery,
@@ -23,7 +53,7 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		var searchValue = activQuery.Search;
 
 		return await cache.GetOrCreateAsync(
-			$"activs:{scope.Visibility}:{scope.CurrentUsrId}:{activQuery.Page}:{activQuery.PageSize}:{searchValue}:{activQuery.SortBy}:{activQuery.SortDesc}:{string.Join(",", statusesList ?? [])}:{activQuery.DateFrom:O}:{activQuery.DateTo:O}:{activQuery.UsrId:0}",
+				$"activs:{scope.Visibility}:{scope.CurrentUsrId}:{activQuery.Page}:{activQuery.PageSize}:{searchValue}:{activQuery.SortBy}:{activQuery.SortDesc}:{string.Join(",", statusesList ?? [])}:{activQuery.DateFrom:O}:{activQuery.DateTo:O}:{activQuery.UsrId:0}:{activQuery.IncludeTotal}",
 			async ct =>
 			{
 				var query = repo.QueryForScope(scope);
@@ -75,38 +105,11 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 					_ => query.OrderBy(a => a.ActivId),
 				};
 
-				var total = await query.CountAsync(ct);
+				var total = activQuery.IncludeTotal ? await query.CountAsync(ct) : 0;
 				var entity = await query
 					.Skip((activQuery.Page - 1) * activQuery.PageSize)
 					.Take(activQuery.PageSize)
-					.Select(a => new ActivResponse(
-						a.ActivId,
-						a.UsrId,
-						a.Usr.UsrLogin,
-						a.OrgId,
-						a.Org == null ? null : a.Org.OrgName,
-						a.PhysId,
-						a.Phys == null
-							? null
-							: (
-								a.Phys.PhysLastname
-								+ " "
-								+ a.Phys.PhysFirstname
-								+ (a.Phys.PhysMiddlename == null ? "" : " " + a.Phys.PhysMiddlename)
-							),
-						a.StatusId,
-						a.Status.StatusName,
-						a.ActivStart,
-						a.ActivEnd,
-						a.ActivDescription,
-						a.ActivDrugs.Select(a => new DrugResponse(
-								a.DrugId,
-								a.Drug.DrugName,
-								a.Drug.DrugBrand,
-								a.Drug.DrugForm
-							))
-							.ToList()
-					))
+					.Select(ToResponse)
 					.ToListAsync(ct);
 
 				return new PagedResponse<ActivResponse>(
@@ -124,34 +127,7 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 	{
 		var activ = await repo.QueryForScope(scope)
 			.Where(a => a.ActivId == id)
-			.Select(a => new ActivResponse(
-				a.ActivId,
-				a.UsrId,
-				a.Usr.UsrLogin,
-				a.OrgId,
-				a.Org == null ? null : a.Org.OrgName,
-				a.PhysId,
-				a.Phys == null
-					? null
-					: (
-						a.Phys.PhysLastname
-						+ " "
-						+ a.Phys.PhysFirstname
-						+ (a.Phys.PhysMiddlename == null ? "" : " " + a.Phys.PhysMiddlename)
-					),
-				a.StatusId,
-				a.Status.StatusName,
-				a.ActivStart,
-				a.ActivEnd,
-				a.ActivDescription,
-				a.ActivDrugs.Select(a => new DrugResponse(
-						a.DrugId,
-						a.Drug.DrugName,
-						a.Drug.DrugBrand,
-						a.Drug.DrugForm
-					))
-					.ToList()
-			))
+			.Select(ToResponse)
 			.FirstOrDefaultAsync();
 
 		if (activ is null)

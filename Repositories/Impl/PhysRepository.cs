@@ -26,7 +26,8 @@ public class PhysRepository(AppDbContext db) : IPhysRepository
 
 	public async Task UpdateAsync(Phys entity)
 	{
-		db.Physes.Update(entity);
+		if (db.Entry(entity).State == EntityState.Detached)
+			db.Physes.Update(entity);
 		await db.SaveChangesAsync();
 	}
 

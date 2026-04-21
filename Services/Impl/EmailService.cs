@@ -1,11 +1,13 @@
 using System.Net;
+using CrmWebApi.Options;
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Options;
 using MimeKit;
 
 namespace CrmWebApi.Services.Impl;
 
-public class EmailService(IConfiguration config) : IEmailService
+public class EmailService(IOptions<EmailOptions> options) : IEmailService
 {
 	public Task SendEmailConfirmationAsync(string toEmail, string toName, string code)
 	{
@@ -49,15 +51,10 @@ public class EmailService(IConfiguration config) : IEmailService
 
 	private async Task SendAsync(string toEmail, string toName, string subject, string html)
 	{
-		var host = config["Email:Host"]!;
-		var port = int.Parse(config["Email:Port"] ?? "587");
-		var username = config["Email:Username"]!;
-		var password = config["Email:Password"]!;
-		var fromAddress = config["Email:FromAddress"]!;
-		var fromName = config["Email:FromName"] ?? "CRM";
+		var emailOptions = options.Value;
 
 		var message = new MimeMessage();
-		message.From.Add(new MailboxAddress(fromName, fromAddress));
+		message.From.Add(new MailboxAddress(emailOptions.FromName, emailOptions.FromAddress));
 		message.To.Add(new MailboxAddress(toName, toEmail));
 		message.Subject = subject;
 		message.Body = new TextPart("html") { Text = html };
@@ -68,8 +65,17 @@ public class EmailService(IConfiguration config) : IEmailService
 			try
 			{
 				using var cts = new CancellationTokenSource(SmtpTimeoutMs);
-				await client.ConnectAsync(host, port, SecureSocketOptions.StartTls, cts.Token);
-				await client.AuthenticateAsync(username, password, cts.Token);
+				await client.ConnectAsync(
+					emailOptions.Host,
+					emailOptions.Port,
+					SecureSocketOptions.StartTls,
+					cts.Token
+				);
+				await client.AuthenticateAsync(
+					emailOptions.Username,
+					emailOptions.Password,
+					cts.Token
+				);
 				await client.SendAsync(message, cts.Token);
 				await client.DisconnectAsync(true, cts.Token);
 				return;

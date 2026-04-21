@@ -10,7 +10,8 @@ public interface IOrgService
 	public Task<Result<PagedResponse<OrgResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		string? search
+		string? search,
+		bool includeTotal = true
 	);
 	public Task<Result<OrgResponse>> GetByIdAsync(int id);
 	public Task<Result<OrgResponse>> CreateAsync(CreateOrgRequest req);

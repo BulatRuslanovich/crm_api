@@ -1,3 +1,4 @@
+using CrmWebApi.Common;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Department;
 using CrmWebApi.Services;
@@ -8,7 +9,7 @@ namespace CrmWebApi.Controllers;
 
 [Route("api/departments")]
 [Tags("Departments")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = RoleNames.Admin)]
 public class DepartmentsController(IDepartmentService service) : ApiController
 {
 	[HttpGet]
@@ -17,8 +18,12 @@ public class DepartmentsController(IDepartmentService service) : ApiController
 	[ProducesResponseType<PagedResponse<DepartmentResponse>>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
-		[FromQuery] int pageSize = 50
-	) => FromResult(await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 200)));
+		[FromQuery] int pageSize = 50,
+		[FromQuery] bool includeTotal = true
+	) =>
+		FromResult(
+			await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 200), includeTotal)
+		);
 
 	[HttpGet("{id:int}")]
 	[EndpointSummary("Get department by ID")]

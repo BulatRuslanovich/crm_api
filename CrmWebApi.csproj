@@ -9,9 +9,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<Compile Remove="CrmWebApi.Tests/**" />
+		<Content Remove="CrmWebApi.Tests/**" />
+		<EmbeddedResource Remove="CrmWebApi.Tests/**" />
+		<None Remove="CrmWebApi.Tests/**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.4.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
 		<PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
@@ -21,11 +29,8 @@
 		<PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
 		<PackageReference Include="Serilog.Expressions" Version="5.0.0" />
 		<PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
-		<PackageReference Include="MailKit" Version="4.15.1" />
+		<PackageReference Include="MailKit" Version="4.16.0" />
 		<PackageReference Include="FluentValidation" Version="11.11.0" />
-		<PackageReference
-			Include="FluentValidation.DependencyInjectionExtensions"
-			Version="11.11.0"
-		/>
+		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
 	</ItemGroup>
 </Project>

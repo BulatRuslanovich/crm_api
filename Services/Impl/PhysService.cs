@@ -1,6 +1,7 @@
 using CrmWebApi.Common;
 using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs;
+using CrmWebApi.DTOs.Org;
 using CrmWebApi.DTOs.Phys;
 using CrmWebApi.DTOs.Spec;
 using CrmWebApi.Repositories;
@@ -22,11 +23,12 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 	public async Task<Result<PagedResponse<PhysResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		string? search = null
+		string? search = null,
+		bool includeTotal = true
 	)
 	{
 		return await cache.GetOrCreateAsync(
-			$"physes:{page}:{pageSize}:{search}",
+			$"physes:{page}:{pageSize}:{search}:{includeTotal}",
 			async ct =>
 			{
 				var query = repo.QueryHard();
@@ -41,14 +43,34 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 					);
 				}
 
-				var total = await query.CountAsync(ct);
-				var entity = await query
+				var total = includeTotal ? await query.CountAsync(ct) : 0;
+				var items = await query
 					.OrderBy(p => p.PhysId)
 					.Skip((page - 1) * pageSize)
 					.Take(pageSize)
+					.Select(p => new PhysResponse(
+						p.PhysId,
+						p.SpecId,
+						p.Spec.SpecName,
+						p.PhysFirstname,
+						p.PhysLastname,
+						p.PhysMiddlename,
+						p.PhysPhone,
+						p.PhysEmail,
+						p.PhysOrgs.Select(po => new OrgResponse(
+								po.OrgId,
+								0,
+								"-",
+								po.Org.OrgName,
+								"-",
+								0,
+								0,
+								"-"
+							))
+							.ToList()
+					))
 					.ToListAsync(ct);
 
-				var items = entity.Select(PhysResponse.From).ToList();
 				return new PagedResponse<PhysResponse>(items, page, pageSize, total);
 			},
 			tags: PhysTags
@@ -57,10 +79,33 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 
 	public async Task<Result<PhysResponse>> GetByIdAsync(int id)
 	{
-		var phys = await repo.QueryHard().FirstOrDefaultAsync(p => p.PhysId == id);
+		var phys = await repo.QueryHard()
+			.Where(p => p.PhysId == id)
+			.Select(p => new PhysResponse(
+				p.PhysId,
+				p.SpecId,
+				p.Spec.SpecName,
+				p.PhysFirstname,
+				p.PhysLastname,
+				p.PhysMiddlename,
+				p.PhysPhone,
+				p.PhysEmail,
+				p.PhysOrgs.Select(po => new OrgResponse(
+						po.OrgId,
+						0,
+						"-",
+						po.Org.OrgName,
+						"-",
+						0,
+						0,
+						"-"
+					))
+					.ToList()
+			))
+			.FirstOrDefaultAsync();
 		if (phys is null)
 			return Error.NotFound($"Физическое лицо {id} не найдено");
-		return PhysResponse.From(phys);
+		return phys;
 	}
 
 	public async Task<Result<PhysResponse>> CreateAsync(CreatePhysRequest req)

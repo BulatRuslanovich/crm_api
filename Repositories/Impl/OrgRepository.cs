@@ -21,7 +21,8 @@ public class OrgRepository(AppDbContext db) : IOrgRepository
 
 	public async Task UpdateAsync(Organization entity)
 	{
-		db.Orgs.Update(entity);
+		if (db.Entry(entity).State == EntityState.Detached)
+			db.Orgs.Update(entity);
 		await db.SaveChangesAsync();
 	}
 }

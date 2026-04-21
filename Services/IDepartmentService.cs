@@ -6,7 +6,11 @@ namespace CrmWebApi.Services;
 
 public interface IDepartmentService
 {
-	public Task<Result<PagedResponse<DepartmentResponse>>> GetAllAsync(int page, int pageSize);
+	public Task<Result<PagedResponse<DepartmentResponse>>> GetAllAsync(
+		int page,
+		int pageSize,
+		bool includeTotal = true
+	);
 	public Task<Result<DepartmentResponse>> GetByIdAsync(int id);
 	public Task<Result<DepartmentResponse>> CreateAsync(CreateDepartmentRequest req);
 	public Task<Result> DeleteAsync(int id);

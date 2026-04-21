@@ -24,7 +24,8 @@ public class DepartmentRepository(AppDbContext db) : IDepartmentRepository
 
 	public async Task UpdateAsync(Department entity)
 	{
-		db.Departments.Update(entity);
+		if (db.Entry(entity).State == EntityState.Detached)
+			db.Departments.Update(entity);
 		await db.SaveChangesAsync();
 	}
 

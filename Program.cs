@@ -6,16 +6,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseApiSerilog();
 
-// Гибридный кеш (in-memory + distributed), TTL 1 минута
-builder.Services.AddHybridCache(opt =>
-{
-	opt.DefaultEntryOptions = new() { Expiration = TimeSpan.FromMinutes(1) };
-});
+builder.Services.AddApiCaching(builder.Configuration);
 
 builder.Services.AddApiControllers();
 
 // Регистрация бизнес-сервисов (extension method)
 builder.Services.AddServices();
+builder.Services.AddApiOptions(builder.Configuration);
 
 // OpenAPI-документация с JWT Bearer схемой авторизации
 builder.Services.AddApiOpenApi();
@@ -56,6 +53,7 @@ if (app.Environment.IsProduction())
 }
 
 app.UseApiSecurityHeaders();
+app.UseApiCompressionGuards();
 app.UseResponseCompression();
 app.UseApiRequestLogging();
 
@@ -89,3 +87,5 @@ app.MapMetrics("/metrics");
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

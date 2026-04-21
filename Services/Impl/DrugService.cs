@@ -16,10 +16,11 @@ public class DrugService(AppDbContext db, HybridCache cache, ILogger<DrugService
 	public async Task<Result<PagedResponse<DrugResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		string? search = null
+		string? search = null,
+		bool includeTotal = true
 	) =>
 		await cache.GetOrCreateAsync(
-			$"drugs:{page}:{pageSize}:{search}",
+			$"drugs:{page}:{pageSize}:{search}:{includeTotal}",
 			async ct =>
 			{
 				var query = db.Drugs.Where(d => !d.IsDeleted).AsNoTracking();
@@ -34,7 +35,7 @@ public class DrugService(AppDbContext db, HybridCache cache, ILogger<DrugService
 					);
 				}
 
-				var total = await query.CountAsync(ct);
+				var total = includeTotal ? await query.CountAsync(ct) : 0;
 				var entities = await query
 					.OrderBy(d => d.DrugId)
 					.Skip((page - 1) * pageSize)

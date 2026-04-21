@@ -7,6 +7,7 @@ public interface IUserRepository
 	public IQueryable<Usr> QueryForScope(Common.Scope scope);
 	public IQueryable<Usr> QueryHard();
 	public IQueryable<Usr> QueryLite();
+	public IQueryable<Usr> QueryForUpdate();
 	public Task<bool> ExistsAsync(System.Linq.Expressions.Expression<Func<Usr, bool>> predicate);
 	public Task<Usr> AddAsync(Usr entity);
 	public Task<Usr> AddWithPoliciesAsync(Usr entity, IEnumerable<int> policyIds);

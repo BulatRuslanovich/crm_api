@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CrmWebApi.Common;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Policy;
 using CrmWebApi.DTOs.User;
@@ -28,19 +29,27 @@ public class UsersController(IUserService service) : ApiController
 		FromResult(await service.GetPolicyByIdAsync(id));
 
 	[HttpGet]
-	[Authorize(Roles = "Admin, Manager, Director")]
+	[Authorize(Roles = RoleNames.AdminManagerDirector)]
 	[EndpointSummary("List all users")]
 	[EndpointDescription("Paginated list of users with their policies.")]
 	[ProducesResponseType<PagedResponse<UserResponse>>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
-		[FromQuery] int pageSize = 20
+		[FromQuery] int pageSize = 20,
+		[FromQuery] bool includeTotal = true
 	)
 	{
 		if (!TryGetScope(out var scope, out var forbid))
 			return forbid!;
 
-		return FromResult(await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 1000), scope));
+		return FromResult(
+			await service.GetAllAsync(
+				Math.Max(page, 1),
+				Math.Clamp(pageSize, 1, 1000),
+				scope,
+				includeTotal
+			)
+		);
 	}
 
 
@@ -55,7 +64,7 @@ public class UsersController(IUserService service) : ApiController
 	public async Task<IActionResult> GetById(int id)
 	{
 		var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-		if (id != currentUserId && !User.IsInRole("Admin"))
+		if (id != currentUserId && !User.IsInRole(RoleNames.Admin))
 			return ForbiddenProblem();
 		return FromResult(await service.GetByIdAsync(id));
 	}
@@ -71,7 +80,7 @@ public class UsersController(IUserService service) : ApiController
 	}
 
 	[HttpPost]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Create user")]
 	[EndpointDescription("Creates a new user with specified policies. Admin only.")]
 	[ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
@@ -92,7 +101,7 @@ public class UsersController(IUserService service) : ApiController
 	public async Task<IActionResult> Update(int id, [FromBody] UpdateUserRequest request)
 	{
 		var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-		if (id != currentUserId && !User.IsInRole("Admin"))
+		if (id != currentUserId && !User.IsInRole(RoleNames.Admin))
 			return ForbiddenProblem();
 
 		return FromResult(await service.UpdateAsync(id, request));
@@ -111,13 +120,13 @@ public class UsersController(IUserService service) : ApiController
 	)
 	{
 		var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-		if (id != currentUserId && !User.IsInRole("Admin"))
+		if (id != currentUserId && !User.IsInRole(RoleNames.Admin))
 			return ForbiddenProblem();
 		return FromResult(await service.ChangePasswordAsync(id, request));
 	}
 
 	[HttpDelete("{id:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Delete user")]
 	[EndpointDescription("Soft-deletes a user and revokes all their refresh tokens. Admin only.")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -125,14 +134,14 @@ public class UsersController(IUserService service) : ApiController
 	public async Task<IActionResult> Delete(int id) => FromResult(await service.DeleteAsync(id));
 
 	[HttpPost("{id:int}/policies/{policyId:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Assign policy to user")]
 	[ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> LinkPolicy(int id, int policyId) =>
 		FromResult(await service.LinkPolicyAsync(id, policyId));
 
 	[HttpDelete("{id:int}/policies/{policyId:int}")]
-	[Authorize(Roles = "Admin")]
+	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Remove policy from user")]
 	[ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> UnlinkPolicy(int id, int policyId) =>
