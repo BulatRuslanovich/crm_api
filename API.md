@@ -38,6 +38,7 @@ interface ProblemDetails {
   type?: string;
   detail?: string;
   instance?: string;
+  traceId: string;
   [key: string]: unknown; // дополнительные расширения
 }
 ```
@@ -47,7 +48,8 @@ interface ProblemDetails {
 ```json
 {
   "status": 404,
-  "title": "User not found"
+  "title": "User not found",
+  "traceId": "0HMT..."
 }
 ```
 

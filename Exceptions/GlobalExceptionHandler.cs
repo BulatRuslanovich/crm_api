@@ -1,5 +1,5 @@
+using CrmWebApi.Common;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CrmWebApi.Exceptions;
 
@@ -10,14 +10,13 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 	{
 		logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
 
-		ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
-		await ctx.Response.WriteAsJsonAsync(
-			new ProblemDetails
-			{
-				Status = StatusCodes.Status500InternalServerError,
-				Title = "Внутренняя ошибка сервера",
-				Extensions = { ["traceId"] = ctx.TraceIdentifier },
-			},
+		await ApiProblemDetails.WriteAsync(
+			ctx,
+			ApiProblemDetails.FromStatus(
+				StatusCodes.Status500InternalServerError,
+				"Внутренняя ошибка сервера",
+				ctx
+			),
 			ct
 		);
 

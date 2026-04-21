@@ -35,11 +35,12 @@ public class UsersController(IUserService service) : ApiController
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
 		[FromQuery] int pageSize = 20
-	) { 
+	)
+	{
 		if (!TryGetScope(out var scope, out var forbid))
 			return forbid!;
 
-		return FromResult(await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 1000), scope)); 
+		return FromResult(await service.GetAllAsync(Math.Max(page, 1), Math.Clamp(pageSize, 1, 1000), scope));
 	}
 
 
@@ -55,7 +56,7 @@ public class UsersController(IUserService service) : ApiController
 	{
 		var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 		if (id != currentUserId && !User.IsInRole("Admin"))
-			return Forbid();
+			return ForbiddenProblem();
 		return FromResult(await service.GetByIdAsync(id));
 	}
 
@@ -92,7 +93,7 @@ public class UsersController(IUserService service) : ApiController
 	{
 		var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 		if (id != currentUserId && !User.IsInRole("Admin"))
-			return Forbid();
+			return ForbiddenProblem();
 
 		return FromResult(await service.UpdateAsync(id, request));
 	}
@@ -111,7 +112,7 @@ public class UsersController(IUserService service) : ApiController
 	{
 		var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 		if (id != currentUserId && !User.IsInRole("Admin"))
-			return Forbid();
+			return ForbiddenProblem();
 		return FromResult(await service.ChangePasswordAsync(id, request));
 	}
 

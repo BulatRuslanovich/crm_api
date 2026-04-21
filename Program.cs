@@ -2,11 +2,13 @@ using System.IO.Compression;
 using System.Net;
 using System.Threading.RateLimiting;
 using CrmWebApi;
+using CrmWebApi.Common;
 using CrmWebApi.Exceptions;
 using CrmWebApi.Extensions;
 using CrmWebApi.Filters;
 using FluentValidation;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.OpenApi;
 using Prometheus;
@@ -72,6 +74,14 @@ builder
 	.AddJsonOptions(opt =>
 		opt.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default)
 	);
+
+builder.Services.Configure<ApiBehaviorOptions>(opt =>
+{
+	opt.InvalidModelStateResponseFactory = context =>
+		ApiProblemDetails.ToActionResult(
+			ApiProblemDetails.FromModelState(context.ModelState, context.HttpContext)
+		);
+});
 
 // FluentValidation: русский язык по умолчанию + авто-регистрация валидаторов
 ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("ru");
@@ -184,7 +194,26 @@ builder.Services.AddRateLimiter(options =>
 				}
 			)
 	);
-	options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+	options.OnRejected = async (context, ct) =>
+	{
+		Dictionary<string, object?>? extensions = null;
+		if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+			extensions = new Dictionary<string, object?>
+			{
+				["retryAfterSeconds"] = Math.Ceiling(retryAfter.TotalSeconds),
+			};
+
+		await ApiProblemDetails.WriteAsync(
+			context.HttpContext,
+			ApiProblemDetails.FromStatus(
+				StatusCodes.Status429TooManyRequests,
+				"Слишком много запросов",
+				context.HttpContext,
+				extensions
+			),
+			ct
+		);
+	};
 });
 
 // Сжатие ответов: Brotli + Gzip, приоритет — скорость
@@ -255,6 +284,22 @@ app.UseSerilogRequestLogging(opt =>
 
 // Middleware pipeline: ошибки → CORS → rate limit → метрики → аутентификация → авторизация
 app.UseExceptionHandler();
+app.UseStatusCodePages(async statusCodeContext =>
+{
+	var httpContext = statusCodeContext.HttpContext;
+	if (httpContext.Response.HasStarted)
+		return;
+
+	var statusCode = httpContext.Response.StatusCode;
+	if (statusCode < StatusCodes.Status400BadRequest)
+		return;
+
+	await ApiProblemDetails.WriteAsync(
+		httpContext,
+		ApiProblemDetails.FromStatus(statusCode, null, httpContext),
+		httpContext.RequestAborted
+	);
+});
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 app.UseHttpMetrics();

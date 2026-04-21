@@ -1,5 +1,5 @@
+using CrmWebApi.Common;
 using FluentValidation;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace CrmWebApi.Filters;
@@ -27,7 +27,9 @@ public class ValidationFilter(IServiceProvider services) : IAsyncActionFilter
 				.Errors.GroupBy(e => e.PropertyName)
 				.ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
 
-			context.Result = new BadRequestObjectResult(new ValidationProblemDetails(errors));
+			context.Result = ApiProblemDetails.ToActionResult(
+				ApiProblemDetails.FromValidationErrors(errors, context.HttpContext)
+			);
 			return;
 		}
 

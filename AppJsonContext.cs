@@ -10,6 +10,7 @@ using CrmWebApi.DTOs.Phys;
 using CrmWebApi.DTOs.Policy;
 using CrmWebApi.DTOs.Spec;
 using CrmWebApi.DTOs.User;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CrmWebApi;
 
@@ -33,4 +34,6 @@ namespace CrmWebApi;
 [JsonSerializable(typeof(IEnumerable<OrgTypeResponse>))]
 [JsonSerializable(typeof(IEnumerable<PolicyResponse>))]
 [JsonSerializable(typeof(IEnumerable<SpecResponse>))]
+[JsonSerializable(typeof(ProblemDetails))]
+[JsonSerializable(typeof(ValidationProblemDetails))]
 internal partial class AppJsonContext : JsonSerializerContext;

@@ -33,19 +33,10 @@ public abstract class ApiController : ControllerBase
 	}
 
 	protected IActionResult MapError(Error error)
-	{
-		var problem = new ProblemDetails
-		{
-			Status = StatusCodeFor(error.Type),
-			Title = error.Message,
-		};
+		=> ApiProblemDetails.ToActionResult(ApiProblemDetails.FromError(error, HttpContext));
 
-		if (error.Extensions is not null)
-			foreach (var (key, value) in error.Extensions)
-				problem.Extensions[key] = value;
-
-		return StatusCode(problem.Status!.Value, problem);
-	}
+	protected IActionResult ForbiddenProblem() =>
+		MapError(Error.Forbidden("Доступ запрещён"));
 
 	protected bool TryGetScope(out Scope scope, out IActionResult? forbid)
 	{
@@ -55,7 +46,7 @@ public abstract class ApiController : ControllerBase
 		var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 		if (!int.TryParse(userIdClaim, out var usrId))
 		{
-			forbid = Forbid();
+			forbid = ForbiddenProblem();
 			return false;
 		}
 
@@ -68,17 +59,4 @@ public abstract class ApiController : ControllerBase
 
 		return true;
 	}
-
-	private static int StatusCodeFor(ErrorType type) =>
-		type switch
-		{
-			ErrorType.NotFound => StatusCodes.Status404NotFound,
-			ErrorType.Conflict => StatusCodes.Status409Conflict,
-			ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
-			ErrorType.Forbidden => StatusCodes.Status403Forbidden,
-			ErrorType.Validation => StatusCodes.Status400BadRequest,
-			_ => StatusCodes.Status500InternalServerError,
-		};
-	
-
 }

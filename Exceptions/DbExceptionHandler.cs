@@ -1,11 +1,11 @@
+using CrmWebApi.Common;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace CrmWebApi.Exceptions;
 
-public sealed class DbExceptionHandler : IExceptionHandler
+public sealed class DbExceptionHandler(ILogger<DbExceptionHandler> logger) : IExceptionHandler
 {
 	public async ValueTask<bool> TryHandleAsync(HttpContext ctx, Exception ex, CancellationToken ct)
 	{
@@ -25,14 +25,12 @@ public sealed class DbExceptionHandler : IExceptionHandler
 			_ => (StatusCodes.Status500InternalServerError, "Ошибка базы данных"),
 		};
 
-		ctx.Response.StatusCode = status;
-		await ctx.Response.WriteAsJsonAsync(
-			new ProblemDetails
-			{
-				Status = status,
-				Title = message,
-				Extensions = { ["traceId"] = ctx.TraceIdentifier },
-			},
+		if (status >= StatusCodes.Status500InternalServerError)
+			logger.LogError(ex, "Database exception: {SqlState}", pgEx.SqlState);
+
+		await ApiProblemDetails.WriteAsync(
+			ctx,
+			ApiProblemDetails.FromStatus(status, message, ctx),
 			ct
 		);
 

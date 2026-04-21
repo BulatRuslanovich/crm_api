@@ -1,4 +1,5 @@
 using System.Text;
+using CrmWebApi.Common;
 using CrmWebApi.Data;
 using CrmWebApi.Repositories;
 using CrmWebApi.Repositories.Impl;
@@ -68,6 +69,39 @@ public static class ServiceExtensions
 					ValidAudience = config["Jwt:Audience"],
 					IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
 					ClockSkew = TimeSpan.Zero,
+				};
+
+				opt.Events = new JwtBearerEvents
+				{
+					OnChallenge = async context =>
+					{
+						if (context.Response.HasStarted)
+							return;
+
+						context.HandleResponse();
+						await ApiProblemDetails.WriteAsync(
+							context.HttpContext,
+							ApiProblemDetails.FromStatus(
+								StatusCodes.Status401Unauthorized,
+								"Требуется авторизация",
+								context.HttpContext
+							)
+						);
+					},
+					OnForbidden = async context =>
+					{
+						if (context.Response.HasStarted)
+							return;
+
+						await ApiProblemDetails.WriteAsync(
+							context.HttpContext,
+							ApiProblemDetails.FromStatus(
+								StatusCodes.Status403Forbidden,
+								"Доступ запрещён",
+								context.HttpContext
+							)
+						);
+					},
 				};
 			});
 
