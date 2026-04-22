@@ -194,7 +194,7 @@ CrmWebApi/
 ├── Health/           — health-чеки (SMTP)
 ├── Common/           — Result<T>, Error, enums
 ├── Options/          — typed options и конфигурационная валидация
-├── CrmWebApi.Tests/  — unit tests
+├── CrmWebApi.Tests/  — unit и contract smoke tests
 ├── sql-scripts/      — init-схема для Postgres
 └── Program.cs        — точка входа, pipeline
 ```

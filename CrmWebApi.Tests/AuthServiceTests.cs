@@ -59,25 +59,42 @@ public class AuthServiceTests
 	private static AuthService CreateService(
 		IEnumerable<Usr> users,
 		IRefreshRepository refreshRepository
-	) =>
-		new(
-			new InMemoryUserRepository(users),
+	)
+	{
+		var userRepository = new InMemoryUserRepository(users);
+		var jwtOptions = Microsoft.Extensions.Options.Options.Create(
+			new JwtOptions
+			{
+				Secret = "test-secret-with-more-than-32-characters",
+				Issuer = "issuer",
+				Audience = "audience",
+			}
+		);
+		var authOptions = Microsoft.Extensions.Options.Options.Create(
+			new AuthOptions { OtpHashSecret = "otp-secret-with-more-than-32-characters" }
+		);
+		var sessionService = new AuthSessionService(
+			userRepository,
 			refreshRepository,
+			jwtOptions,
+			NullLogger<AuthSessionService>.Instance
+		);
+		var emailOtpService = new EmailOtpService(
 			new InMemoryEmailTokenRepository(),
+			jwtOptions,
+			authOptions
+		);
+
+		return new AuthService(
+			userRepository,
+			emailOtpService,
 			new NoopEmailService(),
-			Microsoft.Extensions.Options.Options.Create(
-				new JwtOptions
-				{
-					Secret = "test-secret-with-more-than-32-characters",
-					Issuer = "issuer",
-					Audience = "audience",
-				}
-			),
-			Microsoft.Extensions.Options.Options.Create(
-				new AuthOptions { OtpHashSecret = "otp-secret-with-more-than-32-characters" }
-			),
+			sessionService,
+			new PasswordHasher(),
+			authOptions,
 			NullLogger<AuthService>.Instance
 		);
+	}
 
 	private static string Sha256(string value)
 	{

@@ -11,7 +11,8 @@ namespace CrmWebApi.Services.Impl;
 
 public class UserService(
 	IUserRepository repo,
-	IRefreshRepository refreshRepo,
+	IAuthSessionService sessionService,
+	IPasswordHasher passwordHasher,
 	HybridCache cache
 ) : IUserService
 {
@@ -59,7 +60,7 @@ public class UserService(
 			UsrLastname = req.LastName,
 			UsrEmail = req.Email,
 			UsrLogin = req.Login,
-			UsrPasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+			UsrPasswordHash = passwordHasher.Hash(req.Password),
 		};
 		await repo.AddWithPoliciesAsync(user, req.PolicyIds.Distinct());
 
@@ -87,7 +88,7 @@ public class UserService(
 
 		user.IsDeleted = true;
 		await repo.UpdateAsync(user);
-		await refreshRepo.RevokeAllForUserAsync(id);
+		await sessionService.RevokeAllForUserAsync(id);
 		return Result.Success();
 	}
 
@@ -97,10 +98,10 @@ public class UserService(
 		if (user is null)
 			return Error.NotFound($"Пользователь {id} не найден");
 
-		if (!BCrypt.Net.BCrypt.Verify(req.OldPassword, user.UsrPasswordHash))
+		if (!passwordHasher.Verify(req.OldPassword, user.UsrPasswordHash))
 			return Error.Unauthorized("Неверный текущий пароль");
 
-		user.UsrPasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+		user.UsrPasswordHash = passwordHasher.Hash(req.NewPassword);
 		await repo.UpdateAsync(user);
 		return Result.Success();
 	}

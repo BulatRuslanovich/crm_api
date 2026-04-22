@@ -74,5 +74,14 @@ docker compose -f compose.dev.yml up -d
 
 `docker-compose.yml` и `docker-compose.dev.yml` оставлены как совместимые entrypoints через `include`.
 
+## Tests
+
+Тестовый проект подключён к solution: `CrmWebApi.Tests/CrmWebApi.Tests.csproj`.
+Он содержит unit-тесты и contract smoke-тесты для auth, authorization, health и основных контроллеров.
+
+```bash
+dotnet test CrmWebApi.sln
+```
+
 
 - **[DEV.md](DEV.md)** — памятка разработчику: как поднять проект локально

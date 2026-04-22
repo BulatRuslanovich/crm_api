@@ -32,6 +32,9 @@ public static class ServiceExtensions
 		{
 			services.AddScoped<IUserService, UserService>();
 			services.AddScoped<IAuthService, AuthService>();
+			services.AddScoped<IAuthSessionService, AuthSessionService>();
+			services.AddScoped<IEmailOtpService, EmailOtpService>();
+			services.AddSingleton<IPasswordHasher, PasswordHasher>();
 			services.AddScoped<IEmailService, EmailService>();
 			services.AddScoped<IDrugService, DrugService>();
 			services.AddScoped<IOrgService, OrgService>();
