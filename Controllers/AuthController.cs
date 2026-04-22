@@ -1,17 +1,25 @@
-using System.Security.Claims;
+using CrmWebApi.Common;
 using CrmWebApi.DTOs.Auth;
+using CrmWebApi.Options;
 using CrmWebApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace CrmWebApi.Controllers;
 
 [Route("api/auth")]
 [Tags("Auth")]
 [EnableRateLimiting("auth")]
-public class AuthController(IAuthService service) : ApiController
+public class AuthController(
+	IAuthService service,
+	IOptions<JwtOptions> jwtOptions,
+	IWebHostEnvironment environment
+) : ApiController
 {
+	private const string RefreshTokenCookieName = "__Host-refreshToken";
+
 	[HttpPost("register")]
 	[AllowAnonymous]
 	[EndpointSummary("Register a new user")]
@@ -32,12 +40,12 @@ public class AuthController(IAuthService service) : ApiController
 	[AllowAnonymous]
 	[EndpointSummary("Confirm email with OTP code")]
 	[EndpointDescription(
-		"Verifies the 6-digit code sent during registration. Returns JWT tokens on success."
+		"Verifies the 6-digit code sent during registration. Returns a JWT access token and sets the refresh token cookie."
 	)]
 	[ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
 	public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequest req) =>
-		FromResult(await service.ConfirmEmailAsync(req));
+		AuthResult(await service.ConfirmEmailAsync(req));
 
 	[HttpPost("resend-confirmation")]
 	[AllowAnonymous]
@@ -74,32 +82,88 @@ public class AuthController(IAuthService service) : ApiController
 	[AllowAnonymous]
 	[EndpointSummary("Login")]
 	[EndpointDescription(
-		"Authenticates with login/password and returns JWT access + refresh tokens."
+		"Authenticates with login/password, returns a JWT access token and sets the refresh token cookie."
 	)]
 	[ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
 	public async Task<IActionResult> Login([FromBody] LoginRequest req) =>
-		FromResult(await service.LoginAsync(req));
+		AuthResult(await service.LoginAsync(req));
 
 	[HttpPost("refresh")]
 	[AllowAnonymous]
 	[EndpointSummary("Refresh tokens")]
 	[EndpointDescription(
-		"Exchanges a valid refresh token for a new access + refresh token pair. The old refresh token is consumed."
+		"Exchanges the refresh token cookie for a new access token and rotated refresh token cookie. The old refresh token is consumed."
 	)]
-	[ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+	[ProducesResponseType<AccessTokenResponse>(StatusCodes.Status200OK)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-	public async Task<IActionResult> Refresh([FromBody] string refreshToken) =>
-		FromResult(await service.RefreshAsync(refreshToken));
+	public async Task<IActionResult> Refresh()
+	{
+		if (!Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken))
+			return MapError(Error.Unauthorized("Refresh token отсутствует"));
+
+		var result = await service.RefreshAsync(refreshToken);
+		if (!result.IsSuccess)
+			return MapError(result.Error!);
+
+		AppendRefreshTokenCookie(result.Value!.RefreshToken);
+		return Ok(new AccessTokenResponse(result.Value.AccessToken));
+	}
 
 	[HttpPost("logout")]
-	[Authorize]
+	[AllowAnonymous]
 	[EndpointSummary("Logout")]
-	[EndpointDescription("Revokes the provided refresh token. Requires authentication.")]
+	[EndpointDescription("Revokes the refresh token from cookie and clears the cookie.")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
-	public async Task<IActionResult> Logout([FromBody] string refreshToken)
+	public async Task<IActionResult> Logout()
 	{
-		var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-		return FromResult(await service.LogoutAsync(refreshToken, currentUserId));
+		if (Request.Cookies.TryGetValue(RefreshTokenCookieName, out var refreshToken))
+		{
+			var result = await service.LogoutAsync(refreshToken);
+			if (!result.IsSuccess)
+				return MapError(result.Error!);
+		}
+
+		DeleteRefreshTokenCookie();
+		return NoContent();
 	}
+
+	private IActionResult AuthResult(Result<AuthTokens> result)
+	{
+		if (!result.IsSuccess)
+			return MapError(result.Error!);
+
+		AppendRefreshTokenCookie(result.Value!.RefreshToken);
+		return Ok(new AuthResponse(result.Value.AccessToken, result.Value.User));
+	}
+
+	private void AppendRefreshTokenCookie(string refreshToken) =>
+		Response.Cookies.Append(
+			RefreshTokenCookieName,
+			refreshToken,
+			CreateRefreshTokenCookieOptions(
+				DateTimeOffset.UtcNow.AddDays(jwtOptions.Value.RefreshTokenTtlDays)
+			)
+		);
+
+	private void DeleteRefreshTokenCookie() =>
+		Response.Cookies.Append(
+			RefreshTokenCookieName,
+			string.Empty,
+			CreateRefreshTokenCookieOptions(DateTimeOffset.UnixEpoch, maxAge: TimeSpan.Zero)
+		);
+
+	private CookieOptions CreateRefreshTokenCookieOptions(
+		DateTimeOffset expires,
+		TimeSpan? maxAge = null
+	) =>
+		new()
+		{
+			HttpOnly = true,
+			Secure = environment.IsProduction(),
+			SameSite = SameSiteMode.Lax,
+			Path = "/",
+			Expires = expires,
+			MaxAge = maxAge,
+		};
 }

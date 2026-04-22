@@ -66,7 +66,7 @@ public class AuthService(
 		}
 	}
 
-	public async Task<Result<AuthResponse>> ConfirmEmailAsync(ConfirmEmailRequest req)
+	public async Task<Result<AuthTokens>> ConfirmEmailAsync(ConfirmEmailRequest req)
 	{
 		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail == req.Email);
 		if (user is null || user.IsEmailConfirmed)
@@ -115,7 +115,7 @@ public class AuthService(
 		return Result.Success();
 	}
 
-	public async Task<Result<AuthResponse>> LoginAsync(LoginRequest req)
+	public async Task<Result<AuthTokens>> LoginAsync(LoginRequest req)
 	{
 		var user = await userRepo
 			.QueryLite()
@@ -133,7 +133,7 @@ public class AuthService(
 		return await IssueTokensAsync(user);
 	}
 
-	public async Task<Result<AuthResponse>> RefreshAsync(string refreshToken)
+	public async Task<Result<AuthTokens>> RefreshAsync(string refreshToken)
 	{
 		var hash = HashToken(refreshToken);
 		var stored = await refreshRepo.ConsumeByTokenHashAsync(hash);
@@ -154,11 +154,11 @@ public class AuthService(
 		return await IssueTokensAsync(user);
 	}
 
-	public async Task<Result> LogoutAsync(string refreshToken, int currentUserId)
+	public async Task<Result> LogoutAsync(string refreshToken)
 	{
 		var hash = HashToken(refreshToken);
 		var stored = await refreshRepo.GetByTokenHashAsync(hash);
-		if (stored is not null && stored.UsrId == currentUserId)
+		if (stored is not null)
 			await refreshRepo.DeleteAsync(stored);
 		return Result.Success();
 	}
@@ -255,13 +255,13 @@ public class AuthService(
 	}
 
 	// WARNING: Not have validation for user existence, should be done before calling this method
-	private async Task<AuthResponse> IssueTokensAsync(Usr user)
+	private async Task<AuthTokens> IssueTokensAsync(Usr user)
 	{
 		var fullUser = await userRepo.QueryHard().FirstAsync(u => u.UsrId == user.UsrId);
 		var accessToken = GenerateAccessToken(fullUser);
 		var (raw, stored) = GenerateRefreshToken(fullUser.UsrId);
 		await refreshRepo.AddAsync(stored);
-		return new AuthResponse(accessToken, raw, UserResponse.From(fullUser));
+		return new AuthTokens(accessToken, raw, UserResponse.From(fullUser));
 	}
 
 	private string GenerateAccessToken(Usr user)

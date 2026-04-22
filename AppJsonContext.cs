@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CrmWebApi;
 
 [JsonSerializable(typeof(AuthResponse))]
+[JsonSerializable(typeof(AccessTokenResponse))]
 [JsonSerializable(typeof(PendingConfirmationResponse))]
 [JsonSerializable(typeof(PagedResponse<UserResponse>))]
 [JsonSerializable(typeof(PagedResponse<OrgResponse>))]

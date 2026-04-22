@@ -109,21 +109,21 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
 				new PendingConfirmationResponse(req.Email)
 			);
 
-		public Task<Result<AuthResponse>> ConfirmEmailAsync(ConfirmEmailRequest req) =>
-			Task.FromResult<Result<AuthResponse>>(Error.Validation("Неверный или истёкший код"));
+		public Task<Result<AuthTokens>> ConfirmEmailAsync(ConfirmEmailRequest req) =>
+			Task.FromResult<Result<AuthTokens>>(Error.Validation("Неверный или истёкший код"));
 
 		public Task<Result> ResendConfirmationAsync(string email) =>
 			Task.FromResult(Result.Success());
 
-		public Task<Result<AuthResponse>> LoginAsync(LoginRequest req) =>
-			Task.FromResult<Result<AuthResponse>>(Error.Unauthorized("Неверный логин или пароль"));
+		public Task<Result<AuthTokens>> LoginAsync(LoginRequest req) =>
+			Task.FromResult<Result<AuthTokens>>(Error.Unauthorized("Неверный логин или пароль"));
 
-		public Task<Result<AuthResponse>> RefreshAsync(string refreshToken) =>
-			Task.FromResult<Result<AuthResponse>>(
+		public Task<Result<AuthTokens>> RefreshAsync(string refreshToken) =>
+			Task.FromResult<Result<AuthTokens>>(
 				Error.Unauthorized("Refresh token не найден или уже использован")
 			);
 
-		public Task<Result> LogoutAsync(string refreshToken, int currentUserId) =>
+		public Task<Result> LogoutAsync(string refreshToken) =>
 			Task.FromResult(Result.Success());
 
 		public Task<Result> ForgotPasswordAsync(string email) =>
