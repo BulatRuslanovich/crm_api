@@ -4,48 +4,39 @@ using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Drug;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
-public class DrugService(AppDbContext db, HybridCache cache, ILogger<DrugService> logger)
-	: IDrugService
+public class DrugService(AppDbContext db, ILogger<DrugService> logger) : IDrugService
 {
-	private static readonly string[] Tags = ["drugs"];
-
 	public async Task<Result<PagedResponse<DrugResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
 		string? search = null,
 		bool includeTotal = true
-	) =>
-		await cache.GetOrCreateAsync(
-			$"drugs:{page}:{pageSize}:{search}:{includeTotal}",
-			async ct =>
-			{
-				var query = db.Drugs.Where(d => !d.IsDeleted).AsNoTracking();
+	)
+	{
+		var query = db.Drugs.Where(d => !d.IsDeleted).AsNoTracking();
 
-				if (!string.IsNullOrEmpty(search))
-				{
-					string pattern = "%" + search + "%";
+		if (!string.IsNullOrEmpty(search))
+		{
+			string pattern = "%" + search + "%";
 
-					query = query.Where(d =>
-						EF.Functions.ILike(d.DrugName, pattern)
-						|| EF.Functions.ILike(d.DrugBrand, pattern)
-					);
-				}
+			query = query.Where(d =>
+				EF.Functions.ILike(d.DrugName, pattern)
+				|| EF.Functions.ILike(d.DrugBrand, pattern)
+			);
+		}
 
-				var total = includeTotal ? await query.CountAsync(ct) : 0;
-				var entities = await query
-					.OrderBy(d => d.DrugId)
-					.Skip((page - 1) * pageSize)
-					.Take(pageSize)
-					.ToListAsync(ct);
-				var items = entities.Select(DrugResponse.From).ToList();
-				return new PagedResponse<DrugResponse>(items, page, pageSize, total);
-			},
-			tags: Tags
-		);
+		var total = includeTotal ? await query.CountAsync() : 0;
+		var entities = await query
+			.OrderBy(d => d.DrugId)
+			.Skip((page - 1) * pageSize)
+			.Take(pageSize)
+			.ToListAsync();
+		var items = entities.Select(DrugResponse.From).ToList();
+		return new PagedResponse<DrugResponse>(items, page, pageSize, total);
+	}
 
 	public async Task<Result<DrugResponse>> GetByIdAsync(int id)
 	{
@@ -68,7 +59,6 @@ public class DrugService(AppDbContext db, HybridCache cache, ILogger<DrugService
 		};
 		db.Drugs.Add(drug);
 		await db.SaveChangesAsync();
-		await cache.RemoveByTagAsync("drugs");
 		logger.LogInformation("Drug created: {DrugName} (id={DrugId})", drug.DrugName, drug.DrugId);
 		return DrugResponse.From(drug);
 	}
@@ -84,7 +74,6 @@ public class DrugService(AppDbContext db, HybridCache cache, ILogger<DrugService
 		drug.DrugForm = req.Form ?? drug.DrugForm;
 
 		await db.SaveChangesAsync();
-		await cache.RemoveByTagAsync("drugs");
 		logger.LogInformation("Drug updated: id={DrugId}", id);
 		return DrugResponse.From(drug);
 	}
@@ -97,7 +86,6 @@ public class DrugService(AppDbContext db, HybridCache cache, ILogger<DrugService
 
 		drug.IsDeleted = true;
 		await db.SaveChangesAsync();
-		await cache.RemoveByTagAsync("drugs");
 		logger.LogInformation("Drug deleted: id={DrugId}", id);
 		return Result.Success();
 	}

@@ -13,7 +13,6 @@ namespace CrmWebApi.Services.Impl;
 public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysService> logger)
 	: IPhysService
 {
-	private static readonly string[] PhysTags = ["physes"];
 	private static readonly string[] SpecTags = ["specs"];
 	private static readonly HybridCacheEntryOptions RefOptions = new()
 	{
@@ -27,54 +26,47 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 		bool includeTotal = true
 	)
 	{
-		return await cache.GetOrCreateAsync(
-			$"physes:{page}:{pageSize}:{search}:{includeTotal}",
-			async ct =>
-			{
-				var query = repo.QueryHard();
+		var query = repo.QueryHard();
 
-				if (!string.IsNullOrEmpty(search))
-				{
-					string pattern = "%" + search + "%";
-					query = query.Where(p =>
-						EF.Functions.ILike(p.PhysFirstname, pattern)
-						|| EF.Functions.ILike(p.PhysLastname, pattern)
-						|| EF.Functions.ILike(p.PhysMiddlename ?? "", pattern)
-					);
-				}
+		if (!string.IsNullOrEmpty(search))
+		{
+			string pattern = "%" + search + "%";
+			query = query.Where(p =>
+				EF.Functions.ILike(p.PhysFirstname, pattern)
+				|| EF.Functions.ILike(p.PhysLastname, pattern)
+				|| EF.Functions.ILike(p.PhysMiddlename ?? "", pattern)
+			);
+		}
 
-				var total = includeTotal ? await query.CountAsync(ct) : 0;
-				var items = await query
-					.OrderBy(p => p.PhysId)
-					.Skip((page - 1) * pageSize)
-					.Take(pageSize)
-					.Select(p => new PhysResponse(
-						p.PhysId,
-						p.SpecId,
-						p.Spec.SpecName,
-						p.PhysFirstname,
-						p.PhysLastname,
-						p.PhysMiddlename,
-						p.PhysPhone,
-						p.PhysEmail,
-						p.PhysOrgs.Select(po => new OrgResponse(
-								po.OrgId,
-								0,
-								"-",
-								po.Org.OrgName,
-								"-",
-								0,
-								0,
-								"-"
-							))
-							.ToList()
+		var total = includeTotal ? await query.CountAsync() : 0;
+		var items = await query
+			.OrderBy(p => p.PhysId)
+			.Skip((page - 1) * pageSize)
+			.Take(pageSize)
+			.Select(p => new PhysResponse(
+				p.PhysId,
+				p.SpecId,
+				p.Spec.SpecName,
+				p.PhysFirstname,
+				p.PhysLastname,
+				p.PhysMiddlename,
+				p.PhysPhone,
+				p.PhysEmail,
+				p.PhysOrgs.Select(po => new OrgResponse(
+						po.OrgId,
+						0,
+						"-",
+						po.Org.OrgName,
+						"-",
+						0,
+						0,
+						"-"
 					))
-					.ToListAsync(ct);
+					.ToList()
+			))
+			.ToListAsync();
 
-				return new PagedResponse<PhysResponse>(items, page, pageSize, total);
-			},
-			tags: PhysTags
-		);
+		return new PagedResponse<PhysResponse>(items, page, pageSize, total);
 	}
 
 	public async Task<Result<PhysResponse>> GetByIdAsync(int id)
@@ -121,7 +113,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 		};
 
 		await repo.AddAsync(phys);
-		await cache.RemoveByTagAsync("physes");
 		logger.LogInformation("Contact created: id={PhysId}", phys.PhysId);
 		return await GetByIdAsync(phys.PhysId);
 	}
@@ -140,7 +131,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 		phys.PhysEmail = req.Email ?? phys.PhysEmail;
 
 		await repo.UpdateAsync(phys);
-		await cache.RemoveByTagAsync("physes");
 		logger.LogInformation("Contact updated: id={PhysId}", id);
 		return await GetByIdAsync(id);
 	}
@@ -153,7 +143,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 
 		phys.IsDeleted = true;
 		await repo.UpdateAsync(phys);
-		await cache.RemoveByTagAsync("physes");
 		logger.LogInformation("Contact deleted: id={PhysId}", id);
 		return Result.Success();
 	}
@@ -161,7 +150,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 	public async Task<Result> LinkOrgAsync(int physId, int orgId)
 	{
 		await repo.LinkOrgAsync(physId, orgId);
-		await cache.RemoveByTagAsync("physes");
 		return Result.Success();
 	}
 
@@ -170,7 +158,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 		var found = await repo.UnlinkOrgAsync(physId, orgId);
 		if (!found)
 			return Error.NotFound("Связь не найдена");
-		await cache.RemoveByTagAsync("physes");
 		return Result.Success();
 	}
 

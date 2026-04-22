@@ -6,14 +6,11 @@ using CrmWebApi.DTOs.Activ;
 using CrmWebApi.DTOs.Drug;
 using CrmWebApi.Repositories;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
-public class ActivService(IActivRepository repo, HybridCache cache, ILogger<ActivService> logger)
-	: IActivService
+public class ActivService(IActivRepository repo, ILogger<ActivService> logger) : IActivService
 {
-	private static readonly string[] Tags = ["activs"];
 	private static readonly Expression<Func<Activ, ActivResponse>> ToResponse = a =>
 		new ActivResponse(
 			a.ActivId,
@@ -51,75 +48,67 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 	{
 		var statusesList = activQuery.Statuses?.ToList();
 		var searchValue = activQuery.Search;
+		var query = repo.QueryForScope(scope);
 
-		return await cache.GetOrCreateAsync(
-				$"activs:{scope.Visibility}:{scope.CurrentUsrId}:{activQuery.Page}:{activQuery.PageSize}:{searchValue}:{activQuery.SortBy}:{activQuery.SortDesc}:{string.Join(",", statusesList ?? [])}:{activQuery.DateFrom:O}:{activQuery.DateTo:O}:{activQuery.UsrId:0}:{activQuery.IncludeTotal}",
-			async ct =>
-			{
-				var query = repo.QueryForScope(scope);
+		if (!string.IsNullOrEmpty(searchValue))
+		{
+			string pattern = "%" + searchValue + "%";
+			query = query.Where(a =>
+				EF.Functions.ILike(a.ActivDescription ?? "", pattern)
+				|| (a.Org != null && EF.Functions.ILike(a.Org.OrgName, pattern))
+				|| (
+					a.Phys != null
+					&& (
+						EF.Functions.ILike(a.Phys.PhysLastname, pattern)
+						|| EF.Functions.ILike(a.Phys.PhysFirstname, pattern)
+						|| EF.Functions.ILike(a.Phys.PhysMiddlename ?? "", pattern)
+					)
+				)
+				|| a.ActivDrugs.Any(ad => EF.Functions.ILike(ad.Drug.DrugName, pattern))
+			);
+		}
 
-				if (!string.IsNullOrEmpty(searchValue))
-				{
-					string pattern = "%" + searchValue + "%";
-					query = query.Where(a =>
-						EF.Functions.ILike(a.ActivDescription ?? "", pattern)
-						|| (a.Org != null && EF.Functions.ILike(a.Org.OrgName, pattern))
-						|| (
-							a.Phys != null
-							&& (
-								EF.Functions.ILike(a.Phys.PhysLastname, pattern)
-								|| EF.Functions.ILike(a.Phys.PhysFirstname, pattern)
-								|| EF.Functions.ILike(a.Phys.PhysMiddlename ?? "", pattern)
-							)
-						)
-						|| a.ActivDrugs.Any(ad => EF.Functions.ILike(ad.Drug.DrugName, pattern))
-					);
-				}
+		if (activQuery.UsrId is not null)
+			query = query.Where(a => a.UsrId == activQuery.UsrId);
 
-				if (activQuery.UsrId is not null)
-					query = query.Where(a => a.UsrId == activQuery.UsrId);
+		if (activQuery.DateFrom is not null)
+			query = query.Where(a => a.ActivStart >= activQuery.DateFrom);
 
-				if (activQuery.DateFrom is not null)
-					query = query.Where(a => a.ActivStart >= activQuery.DateFrom);
+		if (activQuery.DateTo is not null)
+			query = query.Where(a => a.ActivStart <= activQuery.DateTo);
 
-				if (activQuery.DateTo is not null)
-					query = query.Where(a => a.ActivStart <= activQuery.DateTo);
+		if (statusesList is { Count: > 0 })
+			query = query.Where(a => statusesList.Contains(a.StatusId));
 
-				if (statusesList is { Count: > 0 })
-					query = query.Where(a => statusesList.Contains(a.StatusId));
+		query = activQuery.SortBy switch
+		{
+			ActivSortBy.Start => activQuery.SortDesc
+				? query.OrderByDescending(a => a.ActivStart)
+				: query.OrderBy(a => a.ActivStart),
 
-				query = activQuery.SortBy switch
-				{
-					ActivSortBy.Start => activQuery.SortDesc
-						? query.OrderByDescending(a => a.ActivStart)
-						: query.OrderBy(a => a.ActivStart),
+			ActivSortBy.End => activQuery.SortDesc
+				? query.OrderByDescending(a => a.ActivEnd)
+				: query.OrderBy(a => a.ActivEnd),
 
-					ActivSortBy.End => activQuery.SortDesc
-						? query.OrderByDescending(a => a.ActivEnd)
-						: query.OrderBy(a => a.ActivEnd),
+			ActivSortBy.Status => activQuery.SortDesc
+				? query.OrderByDescending(a => a.Status.StatusName)
+				: query.OrderBy(a => a.Status.StatusName),
 
-					ActivSortBy.Status => activQuery.SortDesc
-						? query.OrderByDescending(a => a.Status.StatusName)
-						: query.OrderBy(a => a.Status.StatusName),
+			_ => query.OrderBy(a => a.ActivId),
+		};
 
-					_ => query.OrderBy(a => a.ActivId),
-				};
+		var total = activQuery.IncludeTotal ? await query.CountAsync() : 0;
+		var entity = await query
+			.Skip((activQuery.Page - 1) * activQuery.PageSize)
+			.Take(activQuery.PageSize)
+			.Select(ToResponse)
+			.ToListAsync();
 
-				var total = activQuery.IncludeTotal ? await query.CountAsync(ct) : 0;
-				var entity = await query
-					.Skip((activQuery.Page - 1) * activQuery.PageSize)
-					.Take(activQuery.PageSize)
-					.Select(ToResponse)
-					.ToListAsync(ct);
-
-				return new PagedResponse<ActivResponse>(
-					entity,
-					activQuery.Page,
-					activQuery.PageSize,
-					total
-				);
-			},
-			tags: Tags
+		return new PagedResponse<ActivResponse>(
+			entity,
+			activQuery.Page,
+			activQuery.PageSize,
+			total
 		);
 	}
 
@@ -149,7 +138,6 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 			ActivDescription = req.Description,
 		};
 		await repo.AddWithDrugsAsync(activ, req.DrugIds.Distinct());
-		await cache.RemoveByTagAsync("activs");
 
 		logger.LogInformation("Activity created: id={ActivId}, usr={UsrId}", activ.ActivId, usrId);
 		return await GetByIdAsync(activ.ActivId, Scope.ForAll(usrId));
@@ -171,7 +159,6 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		activ.ActivDescription = req.Description ?? activ.ActivDescription;
 
 		await repo.UpdateAsync(activ);
-		await cache.RemoveByTagAsync("activs");
 		logger.LogInformation("Activity updated: id={ActivId}", id);
 		return await GetByIdAsync(id, Scope.ForAll(scope.CurrentUsrId));
 	}
@@ -184,7 +171,6 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 
 		activ.IsDeleted = true;
 		await repo.UpdateAsync(activ);
-		await cache.RemoveByTagAsync("activs");
 		logger.LogInformation("Activity deleted: id={ActivId}", id);
 		return Result.Success();
 	}
@@ -196,7 +182,6 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 			return Error.NotFound($"Активность {activId} не найдена");
 
 		await repo.LinkDrugAsync(activId, drugId);
-		await cache.RemoveByTagAsync("activs");
 		return Result.Success();
 	}
 
@@ -209,7 +194,6 @@ public class ActivService(IActivRepository repo, HybridCache cache, ILogger<Acti
 		var found = await repo.UnlinkDrugAsync(activId, drugId);
 		if (!found)
 			return Error.NotFound("Связь не найдена");
-		await cache.RemoveByTagAsync("activs");
 		return Result.Success();
 	}
 }

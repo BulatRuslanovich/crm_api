@@ -12,7 +12,6 @@ namespace CrmWebApi.Services.Impl;
 public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgService> logger)
 	: IOrgService
 {
-	private static readonly string[] Tags = ["orgs"];
 	private static readonly string[] TypeTags = ["org-types"];
 	private static readonly HybridCacheEntryOptions RefOptions = new()
 	{
@@ -26,42 +25,35 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 		bool includeTotal = true
 	)
 	{
-		return await cache.GetOrCreateAsync(
-			$"orgs:{page}:{pageSize}:{search}:{includeTotal}",
-			async ct =>
-			{
-				var query = repo.QueryHard();
+		var query = repo.QueryHard();
 
-				if (!string.IsNullOrEmpty(search))
-				{
-					string pattern = "%" + search + "%";
+		if (!string.IsNullOrEmpty(search))
+		{
+			string pattern = "%" + search + "%";
 
-					query = query.Where(o =>
-						EF.Functions.ILike(o.OrgName, pattern)
-						|| EF.Functions.ILike(o.OrgAddress, pattern)
-					);
-				}
+			query = query.Where(o =>
+				EF.Functions.ILike(o.OrgName, pattern)
+				|| EF.Functions.ILike(o.OrgAddress, pattern)
+			);
+		}
 
-				var total = includeTotal ? await query.CountAsync(ct) : 0;
-				var items = await query
-					.OrderBy(o => o.OrgId)
-					.Skip((page - 1) * pageSize)
-					.Take(pageSize)
-					.Select(o => new OrgResponse(
-						o.OrgId,
-						o.OrgTypeId,
-						o.OrgType.OrgTypeName,
-						o.OrgName,
-						o.OrgInn,
-						o.OrgLatitude,
-						o.OrgLongitude,
-						o.OrgAddress
-					))
-					.ToListAsync(ct);
-				return new PagedResponse<OrgResponse>(items, page, pageSize, total);
-			},
-			tags: Tags
-		);
+		var total = includeTotal ? await query.CountAsync() : 0;
+		var items = await query
+			.OrderBy(o => o.OrgId)
+			.Skip((page - 1) * pageSize)
+			.Take(pageSize)
+			.Select(o => new OrgResponse(
+				o.OrgId,
+				o.OrgTypeId,
+				o.OrgType.OrgTypeName,
+				o.OrgName,
+				o.OrgInn,
+				o.OrgLatitude,
+				o.OrgLongitude,
+				o.OrgAddress
+			))
+			.ToListAsync();
+		return new PagedResponse<OrgResponse>(items, page, pageSize, total);
 	}
 
 	public async Task<Result<OrgResponse>> GetByIdAsync(int id)
@@ -96,7 +88,6 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 			OrgAddress = req.Address,
 		};
 		await repo.AddAsync(org);
-		await cache.RemoveByTagAsync("orgs");
 		logger.LogInformation(
 			"Organization created: {OrgName} (id={OrgId})",
 			org.OrgName,
@@ -119,7 +110,6 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 		org.OrgAddress = req.Address ?? org.OrgAddress;
 
 		await repo.UpdateAsync(org);
-		await cache.RemoveByTagAsync("orgs");
 		logger.LogInformation("Organization updated: id={OrgId}", id);
 		return await GetByIdAsync(id);
 	}
@@ -132,7 +122,6 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 
 		org.IsDeleted = true;
 		await repo.UpdateAsync(org);
-		await cache.RemoveByTagAsync("orgs");
 		logger.LogInformation("Organization deleted: id={OrgId}", id);
 		return Result.Success();
 	}

@@ -1,0 +1,378 @@
+{
+  "uid": "crm-logs",
+  "title": "CRM — Logs",
+  "tags": ["logs", "loki"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "label": "Container",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values(container)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {}
+      },
+      {
+        "name": "level",
+        "label": "Level",
+        "type": "custom",
+        "query": ".*,VRB,DBG,INF,WRN,ERR,FTL",
+        "multi": false,
+        "includeAll": false,
+        "current": { "text": ".+", "value": ".+" },
+        "options": [
+          { "text": "All",     "value": ".+", "selected": true },
+          { "text": "Verbose", "value": "VRB", "selected": false },
+          { "text": "Debug",   "value": "DBG", "selected": false },
+          { "text": "Info",    "value": "INF", "selected": false },
+          { "text": "Warning", "value": "WRN", "selected": false },
+          { "text": "Error",   "value": "ERR", "selected": false },
+          { "text": "Fatal",   "value": "FTL", "selected": false }
+        ]
+      },
+      {
+        "name": "source",
+        "label": "Source",
+        "type": "custom",
+        "query": ".*,RequestLoggingMiddleware,AuthService,UserService,PhysService,OrgService,ActivService,DrugService,EmailService",
+        "multi": false,
+        "includeAll": false,
+        "current": { "text": "All", "value": ".*" },
+        "options": [
+          { "text": "All",              "value": ".*",                       "selected": true  },
+          { "text": "HTTP Requests",    "value": "RequestLoggingMiddleware", "selected": false },
+          { "text": "Auth",             "value": "AuthService",              "selected": false },
+          { "text": "Users",            "value": "UserService",              "selected": false },
+          { "text": "Phys",             "value": "PhysService",              "selected": false },
+          { "text": "Orgs",             "value": "OrgService",               "selected": false },
+          { "text": "Activities",       "value": "ActivService",             "selected": false },
+          { "text": "Drugs",            "value": "DrugService",              "selected": false },
+          { "text": "Email",            "value": "EmailService",             "selected": false }
+        ]
+      },
+      {
+        "name": "slow_threshold",
+        "label": "Slow threshold (ms)",
+        "type": "custom",
+        "query": "500,1000,2000,5000",
+        "multi": false,
+        "includeAll": false,
+        "current": { "text": "1000", "value": "1000" },
+        "options": [
+          { "text": "500ms",  "value": "500",  "selected": false },
+          { "text": "1000ms", "value": "1000", "selected": true  },
+          { "text": "2000ms", "value": "2000", "selected": false },
+          { "text": "5000ms", "value": "5000", "selected": false }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 4,
+      "title": "Total Requests",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container=~\"$container\"} |~ \"responded \\\\d+\" [$__range]))",
+          "queryType": "instant",
+          "legendFormat": "requests"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Errors",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container=~\"$container\"} | level=\"ERR\" [$__range]))",
+          "queryType": "instant",
+          "legendFormat": "errors"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Warnings",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["sum"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container=~\"$container\"} | level=\"WRN\" [$__range]))",
+          "queryType": "instant",
+          "legendFormat": "warnings"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Avg Response Time (ms)",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red",    "value": 2000 }
+            ]
+          }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["mean"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "targets": [
+        {
+          "expr": "avg_over_time({container=~\"$container\"} |~ \"responded\" | regexp \"in (?P<duration>[\\\\d.]+)ms\" | unwrap duration | __error__=\"\" [$__range])",
+          "queryType": "instant",
+          "legendFormat": "avg ms"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "title": "Error rate / min",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 7 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({container=~\"$container\"} | level=\"ERR\" [1m]))",
+          "legendFormat": "errors/min",
+          "queryType": "range"
+        },
+        {
+          "expr": "sum(count_over_time({container=~\"$container\"} | level=\"WRN\" [1m]))",
+          "legendFormat": "warnings/min",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Avg Response Time / min",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 7 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "avg_over_time({container=~\"$container\"} |~ \"responded\" | regexp \"in (?P<duration>[\\\\d.]+)ms\" | unwrap duration | __error__=\"\" [1m])",
+          "legendFormat": "avg response time",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "API Health",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 11, "w": 12, "h": 10 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "short",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "drawStyle": "line",
+            "stacking": { "mode": "none" }
+          },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" } } },
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } }
+          ]
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"crm-api\"}",
+          "legendFormat": "API health",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Log Volume by Container",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 11, "w": 12, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (container) (count_over_time({container=~\"$container\"} [1m]))",
+          "legendFormat": "{{container}}",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Slow Requests (> $slow_threshold ms)",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "expr": "{container=~\"$container\"} |~ \"responded\" | regexp \"in (?P<duration>[\\\\d.]+)ms\" | duration > $slow_threshold",
+          "queryType": "range",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Errors & Warnings",
+      "type": "logs",
+      "gridPos": { "x": 12, "y": 21, "w": 12, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "signature",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{container=~\"$container\"} | level=~\"ERR|WRN|FTL\"",
+          "queryType": "range",
+          "legendFormat": ""
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "All Logs",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 31, "w": 24, "h": 15 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{container=~\"$container\", source=~\"$source\"} | level=~\"$level\"",
+          "queryType": "range",
+          "legendFormat": ""
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 38
+}
