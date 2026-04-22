@@ -1,7 +1,9 @@
 using System.IO.Compression;
 using System.Net;
+using CrmWebApi.Options;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Templates;
@@ -125,14 +127,32 @@ public static class HostConfigurationExtensions
 
 		public void UseApiForwardedHeaders()
 		{
+			var configuredOptions = app
+				.ApplicationServices.GetRequiredService<IOptions<ApiForwardedHeadersOptions>>()
+				.Value;
+
 			var forwardedOptions = new ForwardedHeadersOptions
 			{
 				ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-				ForwardLimit = 1
+				ForwardLimit = configuredOptions.ForwardLimit
 			};
 
-			forwardedOptions.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
-			forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+			foreach (var proxy in configuredOptions.KnownProxies)
+			{
+				if (!IPAddress.TryParse(proxy, out var ip))
+					throw new InvalidOperationException($"Invalid ForwardedHeaders:KnownProxies value: {proxy}");
+
+				forwardedOptions.KnownProxies.Add(ip);
+			}
+
+			foreach (var network in configuredOptions.KnownNetworks)
+			{
+				if (!System.Net.IPNetwork.TryParse(network, out var ipNetwork))
+					throw new InvalidOperationException($"Invalid ForwardedHeaders:KnownNetworks value: {network}");
+
+				forwardedOptions.KnownIPNetworks.Add(ipNetwork);
+			}
+
 			app.UseForwardedHeaders(forwardedOptions);
 		}
 

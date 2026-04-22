@@ -89,6 +89,11 @@ public static class ServiceExtensions
 
 			services.AddOptions<EmailOptions>().Bind(config.GetSection(EmailOptions.SectionName));
 			services.AddOptions<CacheOptions>().Bind(config.GetSection(CacheOptions.SectionName));
+			services
+				.AddOptions<ApiForwardedHeadersOptions>()
+				.Bind(config.GetSection(ApiForwardedHeadersOptions.SectionName))
+				.Validate(o => o.ForwardLimit > 0, "ForwardedHeaders:ForwardLimit must be positive")
+				.ValidateOnStart();
 		}
 
 		public void AddDatabase(IConfiguration config)

@@ -15,7 +15,10 @@ crmwebapi.ru {
     }
 
     @api path /api/*
-    reverse_proxy @api api:8080
+    reverse_proxy @api api:8080 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 
     reverse_proxy frontend:3000
 }

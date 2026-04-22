@@ -57,12 +57,13 @@ app.UseApiCompressionGuards();
 app.UseResponseCompression();
 app.UseApiRequestLogging();
 
-// Middleware pipeline: ошибки → CORS → rate limit → метрики → аутентификация → авторизация
+// Middleware pipeline: ошибки → CORS → rate-limit partitioning → аутентификация → rate limit → метрики → авторизация
 app.UseApiErrorHandling();
 app.UseCors("AllowFrontend");
+app.UseApiRateLimitPartitioning();
+app.UseAuthentication();
 app.UseRateLimiter();
 app.UseHttpMetrics();
-app.UseAuthentication();
 app.UseAuthorization();
 
 // Swagger UI (Scalar)
