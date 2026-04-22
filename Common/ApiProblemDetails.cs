@@ -87,19 +87,23 @@ public static class ApiProblemDetails
 		httpContext.Response.ContentType = ContentType;
 
 		if (problem is ValidationProblemDetails validationProblem)
+		{
 			await httpContext.Response.WriteAsJsonAsync(
 				validationProblem,
 				AppJsonContext.Default.ValidationProblemDetails,
 				ContentType,
 				cancellationToken
 			);
+		}
 		else
+		{
 			await httpContext.Response.WriteAsJsonAsync(
 				problem,
 				AppJsonContext.Default.ProblemDetails,
 				ContentType,
 				cancellationToken
 			);
+		}
 	}
 
 	private static int StatusCodeFor(ErrorType type) =>

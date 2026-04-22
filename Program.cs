@@ -1,6 +1,5 @@
 using CrmWebApi.Extensions;
 using Prometheus;
-using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,19 +65,9 @@ app.UseRateLimiter();
 app.UseHttpMetrics();
 app.UseAuthorization();
 
-// Swagger UI (Scalar)
+app.UseApiDocs();
 
-app.MapOpenApi();
-app.MapScalarApiReference(options =>
-{
-	options.Title = "CRM API";
-	options.Theme = ScalarTheme.DeepSpace;
-	options.DefaultHttpClient = new KeyValuePair<ScalarTarget, ScalarClient>(ScalarTarget.Shell, ScalarClient.Curl);
-	options.AddPreferredSecuritySchemes("Bearer").AddHttpAuthentication("Bearer", _ => { });
-});
-
-
-// Health check эндпоинт (для nginx/k8s/мониторинга)
+// Health checks
 app.MapHealthChecks("/health");
 
 // Prometheus метрики

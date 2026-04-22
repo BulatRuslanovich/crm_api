@@ -9,13 +9,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace CrmWebApi.Controllers;
 
 [Route("api/physes")]
-[Tags("Contacts")]
 [Authorize]
 public class PhysesController(IPhysService physService) : ApiController
 {
 	[HttpGet("specs")]
 	[EndpointSummary("List specialties")]
-	[EndpointDescription("Returns all contact specialties. Cached for 10 minutes.")]
 	[ProducesResponseType<IEnumerable<SpecResponse>>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetAllSpecs() =>
 		FromResult(await physService.GetAllSpecsAsync());
@@ -23,7 +21,6 @@ public class PhysesController(IPhysService physService) : ApiController
 	[HttpGet("specs/{id:int}")]
 	[EndpointSummary("Get specialty by ID")]
 	[ProducesResponseType<SpecResponse>(StatusCodes.Status200OK)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> GetSpecById(int id) =>
 		FromResult(await physService.GetSpecByIdAsync(id));
 
@@ -41,15 +38,11 @@ public class PhysesController(IPhysService physService) : ApiController
 	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Delete specialty")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> DeleteSpec(int id) =>
 		FromResult(await physService.DeleteSpecAsync(id));
 
 	[HttpGet]
 	[EndpointSummary("List contacts")]
-	[EndpointDescription(
-		"Paginated list of contacts (physical persons) with specialty and linked organizations."
-	)]
 	[ProducesResponseType<PagedResponse<PhysResponse>>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
@@ -69,7 +62,6 @@ public class PhysesController(IPhysService physService) : ApiController
 	[HttpGet("{id:int}")]
 	[EndpointSummary("Get contact by ID")]
 	[ProducesResponseType<PhysResponse>(StatusCodes.Status200OK)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> GetById(int id) =>
 		FromResult(await physService.GetByIdAsync(id));
 
@@ -86,18 +78,14 @@ public class PhysesController(IPhysService physService) : ApiController
 	[HttpPut("{id:int}")]
 	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Update contact")]
-	[EndpointDescription("Updates contact fields. Null fields are not changed. Admin only.")]
 	[ProducesResponseType<PhysResponse>(StatusCodes.Status200OK)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Update(int id, [FromBody] UpdatePhysRequest req) =>
 		FromResult(await physService.UpdateAsync(id, req));
 
 	[HttpDelete("{id:int}")]
 	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Delete contact")]
-	[EndpointDescription("Soft-deletes a contact. Admin only.")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Delete(int id) =>
 		FromResult(await physService.DeleteAsync(id));
 

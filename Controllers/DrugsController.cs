@@ -8,13 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace CrmWebApi.Controllers;
 
 [Route("api/drugs")]
-[Tags("Drugs")]
 [Authorize]
 public class DrugsController(IDrugService service) : ApiController
 {
 	[HttpGet]
 	[EndpointSummary("List drugs")]
-	[EndpointDescription("Paginated list of pharmaceutical drugs.")]
 	[ProducesResponseType<PagedResponse<DrugResponse>>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetAll(
 		[FromQuery] int page = 1,
@@ -34,7 +32,6 @@ public class DrugsController(IDrugService service) : ApiController
 	[HttpGet("{id:int}")]
 	[EndpointSummary("Get drug by ID")]
 	[ProducesResponseType<DrugResponse>(StatusCodes.Status200OK)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> GetById(int id) => FromResult(await service.GetByIdAsync(id));
 
 	[HttpPost]
@@ -50,17 +47,13 @@ public class DrugsController(IDrugService service) : ApiController
 	[HttpPut("{id:int}")]
 	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Update drug")]
-	[EndpointDescription("Updates drug fields. Null fields are not changed. Admin only.")]
 	[ProducesResponseType<DrugResponse>(StatusCodes.Status200OK)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Update(int id, [FromBody] UpdateDrugRequest req) =>
 		FromResult(await service.UpdateAsync(id, req));
 
 	[HttpDelete("{id:int}")]
 	[Authorize(Roles = RoleNames.Admin)]
 	[EndpointSummary("Delete drug")]
-	[EndpointDescription("Soft-deletes a drug. Admin only.")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
-	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Delete(int id) => FromResult(await service.DeleteAsync(id));
 }

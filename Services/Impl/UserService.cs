@@ -103,6 +103,7 @@ public class UserService(
 
 		user.UsrPasswordHash = passwordHasher.Hash(req.NewPassword);
 		await repo.UpdateAsync(user);
+		await sessionService.RevokeAllForUserAsync(id);
 		return Result.Success();
 	}
 

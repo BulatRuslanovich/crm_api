@@ -1,13 +1,16 @@
 using System.IO.Compression;
 using System.Net;
 using CrmWebApi.Options;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Templates;
 using Serilog.Templates.Themes;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace CrmWebApi.Extensions;
 
@@ -68,24 +71,117 @@ public static class HostConfigurationExtensions
 				opt.AddDocumentTransformer(
 					(document, _, _) =>
 					{
-						var components = document.Components ?? new();
+						document.Info = new OpenApiInfo
+						{
+							Title = "PHARMO CRM API",
+							Version = "v1",
+							Description = """
+								## Overview
+								REST API for PHARMO CRM, a pharmaceutical customer relationship management platform.
+
+								## Authentication
+								Most endpoints require a Bearer JWT token. Obtain a token via `POST /api/auth/login`, then click **Authorize** and paste:
+
+								`Bearer <your_token>`
+
+								## Rate Limiting
+								Auth endpoints are limited more aggressively than the rest of the API. When a limit is exceeded, the API returns `429 Too Many Requests`.
+
+								## Local Development
+								The default local API URL is `http://localhost:5000`.
+								""",
+						};
+
+						document.Servers =
+						[
+							new OpenApiServer
+							{
+								Url = "http://localhost:5000",
+								Description = "Local development",
+							},
+						];
+
+						document.Tags = new HashSet<OpenApiTag>
+						{
+							new() { Name = "Auth", Description = "Registration, login, email confirmation, password reset, refresh and logout." },
+							new() { Name = "Users", Description = "User accounts, current profile and access policies." },
+							new() { Name = "Departments", Description = "Departments and department membership." },
+							new() { Name = "Orgs", Description = "Organizations and organization types." },
+							new() { Name = "Physes", Description = "Contacts, specializations and organization links." },
+							new() { Name = "Drugs", Description = "Drug catalog management." },
+							new() { Name = "Activs", Description = "CRM activities and linked drugs." },
+						};
+
+						var components = document.Components ?? new OpenApiComponents();
 						components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
 						components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
 						{
 							Type = SecuritySchemeType.Http,
 							Scheme = "bearer",
 							BearerFormat = "JWT",
-							Description = "Enter your JWT token",
+							Description = """
+								JWT access token issued by `POST /api/auth/login`.
+
+								Header format:
+								`Authorization: Bearer eyJhbGci...`
+								""",
 						};
 						document.Components = components;
 
-						document.Security ??= [];
-						document.Security.Add(
+						document.Security =
+						[
 							new OpenApiSecurityRequirement
 							{
 								[new OpenApiSecuritySchemeReference("Bearer")] = [],
 							}
+						];
+
+						return Task.CompletedTask;
+					}
+				);
+
+				opt.AddOperationTransformer(
+					(operation, context, _) =>
+					{
+						var metadata = context.Description.ActionDescriptor.EndpointMetadata;
+						var allowAnonymous = metadata.OfType<IAllowAnonymous>().Any();
+						var authorize = metadata.OfType<IAuthorizeData>().Any();
+						operation.Responses ??= [];
+
+						if (!allowAnonymous && authorize)
+						{
+							operation.Responses.TryAdd(
+								"401",
+								new OpenApiResponse
+								{
+									Description = "Unauthorized: missing, expired or invalid JWT token.",
+								}
+							);
+							operation.Responses.TryAdd(
+								"403",
+								new OpenApiResponse
+								{
+									Description = "Forbidden: authenticated user does not have the required role or policy.",
+								}
+							);
+						}
+
+						operation.Responses.TryAdd(
+							"429",
+							new OpenApiResponse
+							{
+								Description = "Too Many Requests: rate limit exceeded.",
+							}
 						);
+
+						var sortedResponses = operation.Responses
+							.OrderBy(response => response.Key, StringComparer.Ordinal)
+							.ToArray();
+
+						operation.Responses.Clear();
+						foreach (var (statusCode, response) in sortedResponses)
+							operation.Responses.Add(statusCode, response);
+
 						return Task.CompletedTask;
 					}
 				);
@@ -107,6 +203,46 @@ public static class HostConfigurationExtensions
 			services.Configure<GzipCompressionProviderOptions>(opt =>
 				opt.Level = CompressionLevel.Fastest
 			);
+		}
+	}
+
+	extension(WebApplication app)
+	{
+		public void UseApiDocs()
+		{
+			app.MapOpenApi();
+
+			app.MapScalarApiReference(options =>
+			{
+				options.Title = "PHARMO API";
+				options.Theme = ScalarTheme.DeepSpace;
+				options.DefaultHttpClient = new KeyValuePair<ScalarTarget, ScalarClient>(
+					ScalarTarget.CSharp,
+					ScalarClient.HttpClient
+				);
+				options
+					.AddPreferredSecuritySchemes("Bearer")
+					.AddHttpAuthentication("Bearer", _ => { });
+			});
+
+			app.UseSwaggerUI(options =>
+			{
+				options.RoutePrefix = "swagger";
+				options.SwaggerEndpoint("/openapi/v1.json", "PHARMO API v1");
+				options.DocumentTitle = "PHARMO API - Swagger UI";
+				options.DocExpansion(DocExpansion.List);
+				options.DefaultModelRendering(ModelRendering.Example);
+				options.DefaultModelExpandDepth(3);
+				options.DefaultModelsExpandDepth(1);
+				options.DisplayOperationId();
+				options.DisplayRequestDuration();
+				options.EnableDeepLinking();
+				options.EnableFilter();
+				options.EnablePersistAuthorization();
+				options.EnableTryItOutByDefault();
+				options.ShowCommonExtensions();
+				options.ShowExtensions();
+			});
 		}
 	}
 
