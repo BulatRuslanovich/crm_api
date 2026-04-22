@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CrmWebApi.Services.Impl;
 
-public class DepartmentService(IDepartmentRepository repo, ILogger<DepartmentService> logger)
+public class DepartmentService(IDepartmentRepository repo)
 	: IDepartmentService
 {
 	public async Task<Result<PagedResponse<DepartmentResponse>>> GetAllAsync(
@@ -56,7 +56,6 @@ public class DepartmentService(IDepartmentRepository repo, ILogger<DepartmentSer
 
 		var entity = new Department { DepartmentName = req.DepartmentName };
 		await repo.AddAsync(entity);
-		logger.LogInformation("Department created: id={DepartmentId}", entity.DepartmentId);
 		return await GetByIdAsync(entity.DepartmentId);
 	}
 
@@ -68,7 +67,6 @@ public class DepartmentService(IDepartmentRepository repo, ILogger<DepartmentSer
 
 		entity.IsDeleted = true;
 		await repo.UpdateAsync(entity);
-		logger.LogInformation("Department deleted: id={DepartmentId}", id);
 		return Result.Success();
 	}
 
@@ -85,11 +83,6 @@ public class DepartmentService(IDepartmentRepository repo, ILogger<DepartmentSer
 			return Error.Conflict("Пользователь уже в этом департаменте");
 
 		await repo.LinkUserAsync(departmentId, usrId);
-		logger.LogInformation(
-			"User {UsrId} linked to department {DepartmentId}",
-			usrId,
-			departmentId
-		);
 		return Result.Success();
 	}
 
@@ -103,11 +96,6 @@ public class DepartmentService(IDepartmentRepository repo, ILogger<DepartmentSer
 		if (!removed)
 			return Error.NotFound("Пользователь не состоит в этом департаменте");
 
-		logger.LogInformation(
-			"User {UsrId} unlinked from department {DepartmentId}",
-			usrId,
-			departmentId
-		);
 		return Result.Success();
 	}
 }

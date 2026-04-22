@@ -39,12 +39,9 @@ public class ActivsController(IActivService service) : ApiController
 	)]
 	[ProducesResponseType<ActivResponse>(StatusCodes.Status200OK)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-	public async Task<IActionResult> GetById(int id)
-	{
-		if (!TryGetScope(out var scope, out var forbid))
-			return forbid!;
-		return FromResult(await service.GetByIdAsync(id, scope));
-	}
+	public async Task<IActionResult> GetById(int id) =>
+		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.GetByIdAsync(id, scope).ConfigureAwait(false));
+
 
 	[HttpPost]
 	[EndpointSummary("Create activity")]
@@ -54,8 +51,12 @@ public class ActivsController(IActivService service) : ApiController
 	[ProducesResponseType<ActivResponse>(StatusCodes.Status201Created)]
 	public async Task<IActionResult> Create([FromBody] CreateActivRequest req)
 	{
-		var usrId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-		var result = await service.CreateAsync(usrId, req);
+		if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usrId))
+		{
+			return BadRequest();
+		}
+
+		var result = await service.CreateAsync(usrId, req).ConfigureAwait(false);
 		return CreatedResult(result, nameof(GetById), new { id = result.Value?.ActivId });
 	}
 
@@ -66,12 +67,9 @@ public class ActivsController(IActivService service) : ApiController
 	)]
 	[ProducesResponseType<ActivResponse>(StatusCodes.Status200OK)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-	public async Task<IActionResult> Update(int id, [FromBody] UpdateActivRequest req)
-	{
-		if (!TryGetScope(out var scope, out var forbid))
-			return forbid!;
-		return FromResult(await service.UpdateAsync(id, req, scope));
-	}
+	public async Task<IActionResult> Update(int id, [FromBody] UpdateActivRequest req) =>
+		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.UpdateAsync(id, req, scope).ConfigureAwait(false));
+
 
 	[HttpDelete("{id:int}")]
 	[EndpointSummary("Delete activity")]
@@ -80,12 +78,9 @@ public class ActivsController(IActivService service) : ApiController
 	)]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-	public async Task<IActionResult> Delete(int id)
-	{
-		if (!TryGetScope(out var scope, out var forbid))
-			return forbid!;
-		return FromResult(await service.DeleteAsync(id, scope));
-	}
+	public async Task<IActionResult> Delete(int id) =>
+		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.DeleteAsync(id, scope).ConfigureAwait(false));
+
 
 	[HttpPost("{activId:int}/drugs/{drugId:int}")]
 	[EndpointSummary("Link drug to activity")]
@@ -94,12 +89,9 @@ public class ActivsController(IActivService service) : ApiController
 	)]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-	public async Task<IActionResult> LinkDrug(int activId, int drugId)
-	{
-		if (!TryGetScope(out var scope, out var forbid))
-			return forbid!;
-		return FromResult(await service.LinkDrugAsync(activId, drugId, scope));
-	}
+	public async Task<IActionResult> LinkDrug(int activId, int drugId) =>
+		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.LinkDrugAsync(activId, drugId, scope).ConfigureAwait(false));
+
 
 	[HttpDelete("{activId:int}/drugs/{drugId:int}")]
 	[EndpointSummary("Unlink drug from activity")]
@@ -108,10 +100,7 @@ public class ActivsController(IActivService service) : ApiController
 	)]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	[ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-	public async Task<IActionResult> UnlinkDrug(int activId, int drugId)
-	{
-		if (!TryGetScope(out var scope, out var forbid))
-			return forbid!;
-		return FromResult(await service.UnlinkDrugAsync(activId, drugId, scope));
-	}
+	public async Task<IActionResult> UnlinkDrug(int activId, int drugId) =>
+		 !TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.UnlinkDrugAsync(activId, drugId, scope).ConfigureAwait((false)));
+
 }

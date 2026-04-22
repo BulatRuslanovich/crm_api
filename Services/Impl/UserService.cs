@@ -12,8 +12,7 @@ namespace CrmWebApi.Services.Impl;
 public class UserService(
 	IUserRepository repo,
 	IRefreshRepository refreshRepo,
-	HybridCache cache,
-	ILogger<UserService> logger
+	HybridCache cache
 ) : IUserService
 {
 	private static readonly string[] PolicyTags = ["policies"];
@@ -64,7 +63,6 @@ public class UserService(
 		};
 		await repo.AddWithPoliciesAsync(user, req.PolicyIds.Distinct());
 
-		logger.LogInformation("User created: {Login} (id={UsrId})", user.UsrLogin, user.UsrId);
 		return await GetByIdAsync(user.UsrId);
 	}
 
@@ -90,7 +88,6 @@ public class UserService(
 		user.IsDeleted = true;
 		await repo.UpdateAsync(user);
 		await refreshRepo.RevokeAllForUserAsync(id);
-		logger.LogInformation("User deleted: id={UsrId}", id);
 		return Result.Success();
 	}
 
@@ -105,7 +102,6 @@ public class UserService(
 
 		user.UsrPasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
 		await repo.UpdateAsync(user);
-		logger.LogInformation("Password changed: id={UsrId}", id);
 		return Result.Success();
 	}
 

@@ -25,7 +25,6 @@ public class UserRepository(AppDbContext db) : IUserRepository
 		};
 	}
 
-
 	public IQueryable<Usr> QueryHard() =>
 		db
 			.Usrs.Where(u => !u.IsDeleted)
@@ -64,17 +63,12 @@ public class UserRepository(AppDbContext db) : IUserRepository
 		await db.SaveChangesAsync();
 	}
 
-	public async Task AddPoliciesAsync(IEnumerable<UsrPolicy> policies)
-	{
-		await db.UsrPolicies.AddRangeAsync(policies);
-		await db.SaveChangesAsync();
-	}
-
 	public async Task LinkPolicyAsync(int userId, int policyId)
 	{
 		var exists = await db.UsrPolicies.AnyAsync(up =>
 			up.UsrId == userId && up.PolicyId == policyId
 		);
+
 		if (!exists)
 		{
 			db.UsrPolicies.Add(new UsrPolicy { UsrId = userId, PolicyId = policyId });

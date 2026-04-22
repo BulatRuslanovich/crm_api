@@ -24,11 +24,13 @@ public class SmtpHealthCheck(IOptions<EmailOptions> options) : IHealthCheck
 				SecureSocketOptions.StartTls,
 				cancellationToken
 			);
+
 			await client.AuthenticateAsync(
 				emailOptions.Username,
 				emailOptions.Password,
 				cancellationToken
 			);
+
 			await client.DisconnectAsync(true, cancellationToken);
 			return HealthCheckResult.Healthy("SMTP connection OK");
 		}

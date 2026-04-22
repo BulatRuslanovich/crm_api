@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CrmWebApi.Data.Entities;
@@ -6,16 +7,17 @@ namespace CrmWebApi.Data.Entities;
 public class Refresh
 {
 	[Column("refresh_id")]
-	public long RefreshId { get; set; }
+	public long RefreshId { get; init; }
 
 	[Column("usr_id")]
-	public int UsrId { get; set; }
+	public int UsrId { get; init; }
 
+	[MaxLength(255)]
 	[Column("refresh_token_hash")]
-	public string RefreshTokenHash { get; set; } = string.Empty;
+	public string RefreshTokenHash { get; init; } = string.Empty;
 
 	[Column("refresh_expires_at")]
-	public DateTime RefreshExpiresAt { get; set; }
+	public DateTime RefreshExpiresAt { get; init; }
 
-	public Usr Usr { get; set; } = null!;
+	public Usr Usr { get; init; } = null!;
 }

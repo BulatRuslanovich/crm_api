@@ -46,11 +46,6 @@ trim_trailing_whitespace = false
 dotnet_separate_import_directive_groups = false
 file_header_template = unset
 dotnet_sort_system_directives_first = true
-dotnet_sort_alias_directives_first = false
-
-# Remove unused usings
-dotnet_diagnostic.IDE0005.severity = error
-dotnet_diagnostic.CS8019.severity = error
 
 # this. preferences
 dotnet_style_qualification_for_event = false:suggestion
@@ -94,14 +89,6 @@ dotnet_style_readonly_field = true:suggestion
 # Parameter preferences
 dotnet_code_quality_unused_parameters = all:warning
 
-# Suppression preferences
-dotnet_remove_unnecessary_suppression_exclusions = none
-
-# Additional strict rules
-dotnet_code_quality.ca2007_severity = error
-dotnet_code_quality.non_readonly_field_warning = error
-dotnet_code_quality.unused_value_assignment_preference = discard_variable:error
-
 # C# Code Style Rules:
 [*.cs]
 
@@ -126,7 +113,6 @@ csharp_style_prefer_switch_expression = true:suggestion
 csharp_style_throw_expression = true:error
 
 # Modifier preferences
-csharp_prefer_static_local_functions = true:suggestion
 csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:error
 
 # Code-block preferences
@@ -140,8 +126,6 @@ csharp_style_inlined_variable_declaration = true:suggestion
 csharp_style_pattern_local_over_anonymous_function = true:suggestion
 csharp_style_prefer_index_operator = true:suggestion
 csharp_style_prefer_range_operator = true:suggestion
-csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
-csharp_prefer_conditional_delegate_call = true:suggestion
 
 # 'using' directive preferences
 csharp_using_directive_placement = outside_namespace:silent
@@ -154,9 +138,6 @@ csharp_new_line_before_members_in_anonymous_types = true
 csharp_new_line_before_members_in_object_initializers = true
 csharp_new_line_before_open_brace = all
 csharp_new_line_between_query_expression_clauses = true
-csharp_new_line_before_open_brace_anonymous_method = true
-csharp_new_line_before_open_brace_anonymous_type = true
-csharp_new_line_before_open_brace_array_initializer = true
 
 # Indentation preferences
 csharp_indent_block_contents = true
@@ -165,8 +146,6 @@ csharp_indent_case_contents = true
 csharp_indent_case_contents_when_block = true
 csharp_indent_labels = one_less_than_current
 csharp_indent_switch_labels = true
-csharp_indent_case_label = true
-csharp_indent_case_labels_when_block = true
 
 # Space preferences
 csharp_space_after_cast = false
@@ -197,13 +176,7 @@ csharp_preserve_single_line_blocks = true
 csharp_preserve_single_line_statements = true
 
 # Allow single-line if/else statements without braces
-csharp_style_allow_embedded_statements_on_same_line = true:silent
-csharp_style_allow_blank_lines_between_consecutive_braces = false:suggestion
-csharp_style_prefer_method_group_conversion = true:suggestion
-csharp_prefer_switch_expression = true:suggestion
 csharp_style_namespace_declarations = file_scoped:silent
-csharp_style_prefer_tuple_swap = true:suggestion
-dotnet_style_object_initializer = true:suggestion
 
 # Naming conventions
 # Naming rules

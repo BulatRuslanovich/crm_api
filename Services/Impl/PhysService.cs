@@ -10,7 +10,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
-public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysService> logger)
+public class PhysService(IPhysRepository repo, HybridCache cache)
 	: IPhysService
 {
 	private static readonly string[] SpecTags = ["specs"];
@@ -30,7 +30,7 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 
 		if (!string.IsNullOrEmpty(search))
 		{
-			string pattern = "%" + search + "%";
+			var pattern = "%" + search + "%";
 			query = query.Where(p =>
 				EF.Functions.ILike(p.PhysFirstname, pattern)
 				|| EF.Functions.ILike(p.PhysLastname, pattern)
@@ -113,7 +113,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 		};
 
 		await repo.AddAsync(phys);
-		logger.LogInformation("Contact created: id={PhysId}", phys.PhysId);
 		return await GetByIdAsync(phys.PhysId);
 	}
 
@@ -131,7 +130,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 		phys.PhysEmail = req.Email ?? phys.PhysEmail;
 
 		await repo.UpdateAsync(phys);
-		logger.LogInformation("Contact updated: id={PhysId}", id);
 		return await GetByIdAsync(id);
 	}
 
@@ -143,7 +141,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 
 		phys.IsDeleted = true;
 		await repo.UpdateAsync(phys);
-		logger.LogInformation("Contact deleted: id={PhysId}", id);
 		return Result.Success();
 	}
 
@@ -187,11 +184,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 	{
 		var spec = await repo.AddSpecAsync(new Spec { SpecName = req.SpecName });
 		await cache.RemoveByTagAsync("specs");
-		logger.LogInformation(
-			"Specialty created: {SpecName} (id={SpecId})",
-			spec.SpecName,
-			spec.SpecId
-		);
 		return new SpecResponse(spec.SpecId, spec.SpecName);
 	}
 
@@ -201,7 +193,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, ILogger<PhysSe
 		if (!found)
 			return Error.NotFound($"Специальность {id} не найдена");
 		await cache.RemoveByTagAsync("specs");
-		logger.LogInformation("Specialty deleted: id={SpecId}", id);
 		return Result.Success();
 	}
 }

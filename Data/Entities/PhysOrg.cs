@@ -6,14 +6,14 @@ namespace CrmWebApi.Data.Entities;
 public class PhysOrg
 {
 	[Column("phys_org_id")]
-	public int PhysOrgId { get; set; }
+	public int PhysOrgId { get; init; }
 
 	[Column("phys_id")]
-	public int PhysId { get; set; }
+	public int PhysId { get; init; }
 
 	[Column("org_id")]
-	public int OrgId { get; set; }
+	public int OrgId { get; init; }
 
-	public Phys Phys { get; set; } = null!;
-	public Organization Org { get; set; } = null!;
+	public Phys Phys { get; init; } = null!;
+	public Organization Org { get; init; } = null!;
 }

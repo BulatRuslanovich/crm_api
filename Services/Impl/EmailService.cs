@@ -60,7 +60,7 @@ public class EmailService(IOptions<EmailOptions> options) : IEmailService
 		message.Body = new TextPart("html") { Text = html };
 
 		using var client = new SmtpClient();
-		for (int i = 0; i < 3; i++)
+		for (var i = 0; i < 3; i++)
 		{
 			try
 			{

@@ -30,11 +30,9 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 			.WithMessage("Email не должен превышать 200 символов");
 		RuleFor(x => x.FirstName)
 			.MaximumLength(100)
-			.WithMessage("Имя не должно превышать 100 символов")
-			.When(x => x.FirstName is not null);
+			.WithMessage("Имя не должно превышать 100 символов");
 		RuleFor(x => x.LastName)
 			.MaximumLength(100)
-			.WithMessage("Фамилия не должна превышать 100 символов")
-			.When(x => x.LastName is not null);
+			.WithMessage("Фамилия не должна превышать 100 символов");
 	}
 }

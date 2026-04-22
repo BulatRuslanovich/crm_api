@@ -2,16 +2,23 @@ using CrmWebApi.Common;
 
 namespace CrmWebApi.DTOs.Activ;
 
-public class ActivQuery
+public class ActivQuery(
+	string? search,
+	ActivSortBy? sortBy,
+	bool sortDesc,
+	int[]? statuses,
+	DateTimeOffset? dateFrom,
+	DateTimeOffset? dateTo,
+	int? usrId)
 {
 	public int Page { get; set; } = 1;
 	public int PageSize { get; set; } = 100;
-	public string? Search { get; set; }
-	public ActivSortBy? SortBy { get; set; }
-	public bool SortDesc { get; set; }
-	public int[]? Statuses { get; set; }
-	public DateTimeOffset? DateFrom { get; set; }
-	public DateTimeOffset? DateTo { get; set; }
-	public int? UsrId { get; set; }
-	public bool IncludeTotal { get; set; } = true;
+	public string? Search { get; } = search;
+	public ActivSortBy? SortBy { get; } = sortBy;
+	public bool SortDesc { get; } = sortDesc;
+	public int[]? Statuses { get; } = statuses;
+	public DateTimeOffset? DateFrom { get; } = dateFrom;
+	public DateTimeOffset? DateTo { get; } = dateTo;
+	public int? UsrId { get; } = usrId;
+	public const bool IncludeTotal = true;
 }

@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CrmWebApi.Services.Impl;
 
-public class ActivService(IActivRepository repo, ILogger<ActivService> logger) : IActivService
+public class ActivService(IActivRepository repo) : IActivService
 {
 	private static readonly Expression<Func<Activ, ActivResponse>> ToResponse = a =>
 		new ActivResponse(
@@ -54,7 +54,7 @@ public class ActivService(IActivRepository repo, ILogger<ActivService> logger) :
 		{
 			string pattern = "%" + searchValue + "%";
 			query = query.Where(a =>
-				EF.Functions.ILike(a.ActivDescription ?? "", pattern)
+				EF.Functions.ILike(a.ActivDescription, pattern)
 				|| (a.Org != null && EF.Functions.ILike(a.Org.OrgName, pattern))
 				|| (
 					a.Phys != null
@@ -97,7 +97,7 @@ public class ActivService(IActivRepository repo, ILogger<ActivService> logger) :
 			_ => query.OrderBy(a => a.ActivId),
 		};
 
-		var total = activQuery.IncludeTotal ? await query.CountAsync() : 0;
+		var total = await query.CountAsync();
 		var entity = await query
 			.Skip((activQuery.Page - 1) * activQuery.PageSize)
 			.Take(activQuery.PageSize)
@@ -139,7 +139,6 @@ public class ActivService(IActivRepository repo, ILogger<ActivService> logger) :
 		};
 		await repo.AddWithDrugsAsync(activ, req.DrugIds.Distinct());
 
-		logger.LogInformation("Activity created: id={ActivId}, usr={UsrId}", activ.ActivId, usrId);
 		return await GetByIdAsync(activ.ActivId, Scope.ForAll(usrId));
 	}
 
@@ -159,7 +158,6 @@ public class ActivService(IActivRepository repo, ILogger<ActivService> logger) :
 		activ.ActivDescription = req.Description ?? activ.ActivDescription;
 
 		await repo.UpdateAsync(activ);
-		logger.LogInformation("Activity updated: id={ActivId}", id);
 		return await GetByIdAsync(id, Scope.ForAll(scope.CurrentUsrId));
 	}
 
@@ -171,7 +169,6 @@ public class ActivService(IActivRepository repo, ILogger<ActivService> logger) :
 
 		activ.IsDeleted = true;
 		await repo.UpdateAsync(activ);
-		logger.LogInformation("Activity deleted: id={ActivId}", id);
 		return Result.Success();
 	}
 

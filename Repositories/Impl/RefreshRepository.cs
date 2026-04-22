@@ -22,40 +22,15 @@ public class RefreshRepository(AppDbContext db) : IRefreshRepository
 	public Task<Refresh?> GetByTokenHashAsync(string tokenHash) =>
 		db.Refreshes.FirstOrDefaultAsync(r => r.RefreshTokenHash == tokenHash);
 
-	public async Task<Refresh?> ConsumeByTokenHashAsync(string tokenHash)
-	{
-		await db.Database.OpenConnectionAsync();
-		try
-		{
-			await using var command = db.Database.GetDbConnection().CreateCommand();
-			command.CommandText = """
-				DELETE FROM refresh
-				WHERE refresh_token_hash = @tokenHash
-				RETURNING refresh_id, usr_id, refresh_token_hash, refresh_expires_at
-				""";
-
-			var parameter = command.CreateParameter();
-			parameter.ParameterName = "tokenHash";
-			parameter.Value = tokenHash;
-			command.Parameters.Add(parameter);
-
-			await using var reader = await command.ExecuteReaderAsync();
-			if (!await reader.ReadAsync())
-				return null;
-
-			return new Refresh
-			{
-				RefreshId = reader.GetInt64(0),
-				UsrId = reader.GetInt32(1),
-				RefreshTokenHash = reader.GetString(2),
-				RefreshExpiresAt = reader.GetFieldValue<DateTime>(3),
-			};
-		}
-		finally
-		{
-			await db.Database.CloseConnectionAsync();
-		}
-	}
+	public Task<Refresh?> ConsumeByTokenHashAsync(string tokenHash) =>
+		db.Refreshes
+			.FromSqlRaw("""
+			                DELETE FROM refresh
+			                WHERE refresh_token_hash = {0}
+			                RETURNING refresh_id, usr_id, refresh_token_hash, refresh_expires_at
+			            """, tokenHash)
+			.AsNoTracking()
+			.FirstOrDefaultAsync();
 
 	public Task RevokeAllForUserAsync(int usrId) =>
 		db.Refreshes.Where(r => r.UsrId == usrId).ExecuteDeleteAsync();

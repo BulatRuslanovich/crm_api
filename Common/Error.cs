@@ -6,7 +6,7 @@ public sealed record Error(
 	IReadOnlyDictionary<string, object?>? Extensions = null
 )
 {
-	public static Error Failure(string message) => new(message, ErrorType.Failure);
+	public static Error Failure(string message) => new(message);
 
 	public static Error NotFound(string message) => new(message, ErrorType.NotFound);
 

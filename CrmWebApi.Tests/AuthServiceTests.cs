@@ -19,7 +19,7 @@ public class AuthServiceTests
 	public async Task RefreshAsync_ConsumesRefreshTokenOnlyOnce()
 	{
 		// Arrange: create one valid refresh token stored by hash, as production does.
-		var rawRefreshToken = "raw-refresh-token";
+		const string rawRefreshToken = "raw-refresh-token";
 		var user = TestUsers.UserWithRole(1, "Admin");
 		var refreshRepo = new InMemoryRefreshRepository(
 			new Refresh

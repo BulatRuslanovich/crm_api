@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CrmWebApi.Data.Entities;
@@ -6,13 +7,14 @@ namespace CrmWebApi.Data.Entities;
 public class Spec
 {
 	[Column("spec_id")]
-	public int SpecId { get; set; }
+	public int SpecId { get; init; }
 
+	[MaxLength(100)]
 	[Column("spec_name")]
-	public string SpecName { get; set; } = null!;
+	public string SpecName { get; init; } = null!;
 
 	[Column("is_deleted")]
 	public bool IsDeleted { get; set; }
 
-	public ICollection<Phys> Physes { get; set; } = [];
+	public ICollection<Phys> Physes { get; init; } = [];
 }

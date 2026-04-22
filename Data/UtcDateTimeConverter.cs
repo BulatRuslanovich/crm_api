@@ -2,11 +2,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CrmWebApi.Data;
 
-public class UtcDateTimeConverter()
+public abstract class UtcDateTimeConverter()
 	: ValueConverter<DateTime, DateTime>(
 		v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(),
 		v => DateTime.SpecifyKind(v, DateTimeKind.Utc)
 	);
 
-public class UtcDateTimeOffsetConverter()
+public abstract class UtcDateTimeOffsetConverter()
 	: ValueConverter<DateTimeOffset, DateTimeOffset>(v => v.ToUniversalTime(), v => v);

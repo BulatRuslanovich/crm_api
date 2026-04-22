@@ -9,115 +9,107 @@ namespace CrmWebApi.Extensions;
 
 public static class ApiConfigurationExtensions
 {
-	public static IServiceCollection AddApiControllers(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services
-			.AddControllers(opt => opt.Filters.Add<ValidationFilter>())
-			.AddJsonOptions(opt =>
-				opt.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default)
-			);
-
-		services.Configure<ApiBehaviorOptions>(opt =>
+		public void AddApiControllers()
 		{
-			opt.InvalidModelStateResponseFactory = context =>
-				ApiProblemDetails.ToActionResult(
-					ApiProblemDetails.FromModelState(context.ModelState, context.HttpContext)
+			services
+				.AddControllers(opt => opt.Filters.Add<ValidationFilter>())
+				.AddJsonOptions(opt =>
+					opt.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonContext.Default)
 				);
-		});
 
-		ValidatorOptions.Global.LanguageManager.Culture =
-			new System.Globalization.CultureInfo("ru");
-		services.AddValidatorsFromAssemblyContaining<ValidationFilter>();
+			services.Configure<ApiBehaviorOptions>(opt =>
+			{
+				opt.InvalidModelStateResponseFactory = context =>
+					ApiProblemDetails.ToActionResult(
+						ApiProblemDetails.FromModelState(context.ModelState, context.HttpContext)
+					);
+			});
 
-		return services;
-	}
+			ValidatorOptions.Global.LanguageManager.Culture =
+				new System.Globalization.CultureInfo("ru");
+			services.AddValidatorsFromAssemblyContaining<ValidationFilter>();
+		}
 
-	public static IServiceCollection AddApiErrorHandling(this IServiceCollection services)
-	{
-		services.AddProblemDetails();
-		services.AddExceptionHandler<DbExceptionHandler>();
-		services.AddExceptionHandler<GlobalExceptionHandler>();
-
-		return services;
-	}
-
-	public static IServiceCollection AddApiCors(
-		this IServiceCollection services,
-		IConfiguration configuration
-	)
-	{
-		var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-
-		services.AddCors(options =>
+		public void AddApiErrorHandling()
 		{
-			options.AddPolicy(
-				"AllowFrontend",
-				policy =>
-					policy
-						.WithOrigins(corsOrigins)
-						.AllowAnyHeader()
-						.AllowAnyMethod()
-						.AllowCredentials()
-			);
-		});
+			services.AddProblemDetails();
+			services.AddExceptionHandler<DbExceptionHandler>();
+			services.AddExceptionHandler<GlobalExceptionHandler>();
+		}
 
-		return services;
-	}
-
-	public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
-	{
-		services.AddRateLimiter(options =>
+		public void AddApiCors(IConfiguration configuration)
 		{
-			options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-				RateLimitPartition.GetSlidingWindowLimiter(
-					context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-					_ => new SlidingWindowRateLimiterOptions
-					{
-						PermitLimit = 100,
-						Window = TimeSpan.FromMinutes(1),
-						SegmentsPerWindow = 6,
-						QueueLimit = 0,
-					}
-				)
-			);
+			var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
-			options.AddPolicy(
-				"auth",
-				context =>
-					RateLimitPartition.GetFixedWindowLimiter(
+			services.AddCors(options =>
+			{
+				options.AddPolicy(
+					"AllowFrontend",
+					policy =>
+						policy
+							.WithOrigins(corsOrigins)
+							.AllowAnyHeader()
+							.AllowAnyMethod()
+							.AllowCredentials()
+				);
+			});
+		}
+
+		public void AddApiRateLimiting()
+		{
+			services.AddRateLimiter(options =>
+			{
+				options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+					RateLimitPartition.GetSlidingWindowLimiter(
 						context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-						_ => new FixedWindowRateLimiterOptions
+						_ => new SlidingWindowRateLimiterOptions
 						{
-							PermitLimit = 10,
+							PermitLimit = 100,
 							Window = TimeSpan.FromMinutes(1),
+							SegmentsPerWindow = 6,
 							QueueLimit = 0,
 						}
 					)
-			);
-
-			options.OnRejected = async (context, ct) =>
-			{
-				Dictionary<string, object?>? extensions = null;
-				if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
-					extensions = new Dictionary<string, object?>
-					{
-						["retryAfterSeconds"] = Math.Ceiling(retryAfter.TotalSeconds),
-					};
-
-				await ApiProblemDetails.WriteAsync(
-					context.HttpContext,
-					ApiProblemDetails.FromStatus(
-						StatusCodes.Status429TooManyRequests,
-						"Слишком много запросов",
-						context.HttpContext,
-						extensions
-					),
-					ct
 				);
-			};
-		});
 
-		return services;
+				options.AddPolicy(
+					"auth",
+					context =>
+						RateLimitPartition.GetFixedWindowLimiter(
+							context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+							_ => new FixedWindowRateLimiterOptions
+							{
+								PermitLimit = 10,
+								Window = TimeSpan.FromMinutes(1),
+								QueueLimit = 0,
+							}
+						)
+				);
+
+				options.OnRejected = async (context, ct) =>
+				{
+					Dictionary<string, object?>? extensions = null;
+					if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+						extensions = new Dictionary<string, object?>
+						{
+							["retryAfterSeconds"] = Math.Ceiling(retryAfter.TotalSeconds),
+						};
+
+					await ApiProblemDetails.WriteAsync(
+						context.HttpContext,
+						ApiProblemDetails.FromStatus(
+							StatusCodes.Status429TooManyRequests,
+							"Слишком много запросов",
+							context.HttpContext,
+							extensions
+						),
+						ct
+					);
+				};
+			});
+		}
 	}
 
 	public static IApplicationBuilder UseApiErrorHandling(this IApplicationBuilder app)

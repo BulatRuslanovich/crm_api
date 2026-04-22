@@ -5,17 +5,17 @@ namespace CrmWebApi.Common;
 
 public static class ApiProblemDetails
 {
-	public const string ContentType = "application/problem+json";
-	public const string TraceIdExtension = "traceId";
+	private const string ContentType = "application/problem+json";
+	private const string TraceIdExtension = "traceId";
 
 	public static ProblemDetails FromError(Error error, HttpContext httpContext)
 	{
 		var statusCode = StatusCodeFor(error.Type);
 		var problem = FromStatus(statusCode, error.Message, httpContext);
 
-		if (error.Extensions is not null)
-			foreach (var (key, value) in error.Extensions)
-				problem.Extensions[key] = value;
+		if (error.Extensions is null) return problem;
+		foreach (var (key, value) in error.Extensions)
+			problem.Extensions[key] = value;
 
 		return problem;
 	}
@@ -62,9 +62,9 @@ public static class ApiProblemDetails
 			httpContext
 		);
 
-		if (extensions is not null)
-			foreach (var (key, value) in extensions)
-				problem.Extensions[key] = value;
+		if (extensions is null) return problem;
+		foreach (var (key, value) in extensions)
+			problem.Extensions[key] = value;
 
 		return problem;
 	}
@@ -102,7 +102,7 @@ public static class ApiProblemDetails
 			);
 	}
 
-	public static int StatusCodeFor(ErrorType type) =>
+	private static int StatusCodeFor(ErrorType type) =>
 		type switch
 		{
 			ErrorType.NotFound => StatusCodes.Status404NotFound,
@@ -113,7 +113,7 @@ public static class ApiProblemDetails
 			_ => StatusCodes.Status500InternalServerError,
 		};
 
-	public static string DefaultTitleFor(int statusCode) =>
+	private static string DefaultTitleFor(int statusCode) =>
 		statusCode switch
 		{
 			StatusCodes.Status400BadRequest => "Некорректный запрос",

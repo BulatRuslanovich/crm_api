@@ -18,6 +18,6 @@ public record UserResponse(
 			u.UsrLastname,
 			u.UsrEmail,
 			u.UsrLogin,
-			[.. u.UsrPolicies.Where(p => p.Policy is not null).Select(p => p.Policy.PolicyName)]
+			[.. u.UsrPolicies.Select(p => p.Policy.PolicyName)]
 		);
 }

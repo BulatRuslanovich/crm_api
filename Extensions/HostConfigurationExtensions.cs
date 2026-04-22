@@ -11,7 +11,7 @@ namespace CrmWebApi.Extensions;
 
 public static class HostConfigurationExtensions
 {
-	public static ConfigureHostBuilder UseApiSerilog(this ConfigureHostBuilder host)
+	public static void UseApiSerilog(this ConfigureHostBuilder host)
 	{
 		host.UseSerilog(
 			(context, config) =>
@@ -55,127 +55,119 @@ public static class HostConfigurationExtensions
 					config.WriteTo.Debug();
 			}
 		);
-
-		return host;
 	}
 
-	public static IServiceCollection AddApiOpenApi(this IServiceCollection services)
+	extension(IServiceCollection services)
 	{
-		services.AddOpenApi(opt =>
+		public void AddApiOpenApi()
 		{
-			opt.AddDocumentTransformer(
-				(document, _, _) =>
-				{
-					var components = document.Components ?? new();
-					components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-					components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+			services.AddOpenApi(opt =>
+			{
+				opt.AddDocumentTransformer(
+					(document, _, _) =>
 					{
-						Type = SecuritySchemeType.Http,
-						Scheme = "bearer",
-						BearerFormat = "JWT",
-						Description = "Enter your JWT token",
-					};
-					document.Components = components;
-
-					document.Security ??= [];
-					document.Security.Add(
-						new OpenApiSecurityRequirement
+						var components = document.Components ?? new();
+						components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+						components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
 						{
-							[new OpenApiSecuritySchemeReference("Bearer")] = [],
-						}
-					);
-					return Task.CompletedTask;
+							Type = SecuritySchemeType.Http,
+							Scheme = "bearer",
+							BearerFormat = "JWT",
+							Description = "Enter your JWT token",
+						};
+						document.Components = components;
+
+						document.Security ??= [];
+						document.Security.Add(
+							new OpenApiSecurityRequirement
+							{
+								[new OpenApiSecuritySchemeReference("Bearer")] = [],
+							}
+						);
+						return Task.CompletedTask;
+					}
+				);
+			});
+		}
+
+		public void AddApiResponseCompression()
+		{
+			services.AddResponseCompression(opt =>
+			{
+				opt.EnableForHttps = true;
+				opt.Providers.Add<BrotliCompressionProvider>();
+				opt.Providers.Add<GzipCompressionProvider>();
+			});
+
+			services.Configure<BrotliCompressionProviderOptions>(opt =>
+				opt.Level = CompressionLevel.Fastest
+			);
+			services.Configure<GzipCompressionProviderOptions>(opt =>
+				opt.Level = CompressionLevel.Fastest
+			);
+		}
+	}
+
+	extension(IApplicationBuilder app)
+	{
+		public void UseApiCompressionGuards()
+		{
+			app.Use(
+				async (ctx, next) =>
+				{
+					if (ctx.Request.Path.StartsWithSegments("/api/auth"))
+						ctx.Request.Headers.Remove("Accept-Encoding");
+
+					await next();
 				}
 			);
-		});
+		}
 
-		return services;
-	}
-
-	public static IServiceCollection AddApiResponseCompression(this IServiceCollection services)
-	{
-		services.AddResponseCompression(opt =>
+		public void UseApiForwardedHeaders()
 		{
-			opt.EnableForHttps = true;
-			opt.Providers.Add<BrotliCompressionProvider>();
-			opt.Providers.Add<GzipCompressionProvider>();
-		});
-
-		services.Configure<BrotliCompressionProviderOptions>(opt =>
-			opt.Level = CompressionLevel.Fastest
-		);
-		services.Configure<GzipCompressionProviderOptions>(opt =>
-			opt.Level = CompressionLevel.Fastest
-		);
-
-		return services;
-	}
-
-	public static IApplicationBuilder UseApiCompressionGuards(this IApplicationBuilder app)
-	{
-		app.Use(
-			async (ctx, next) =>
+			var forwardedOptions = new ForwardedHeadersOptions
 			{
-				if (ctx.Request.Path.StartsWithSegments("/api/auth"))
-					ctx.Request.Headers.Remove("Accept-Encoding");
-
-				await next();
-			}
-		);
-
-		return app;
-	}
-
-	public static IApplicationBuilder UseApiForwardedHeaders(this IApplicationBuilder app)
-	{
-		var forwardedOptions = new ForwardedHeadersOptions
-		{
-			ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-			ForwardLimit = 1
-		};
-
-		forwardedOptions.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
-		forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
-		app.UseForwardedHeaders(forwardedOptions);
-
-		return app;
-	}
-
-	public static IApplicationBuilder UseApiSecurityHeaders(this IApplicationBuilder app)
-	{
-		app.Use(
-			async (ctx, next) =>
-			{
-				ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
-				ctx.Response.Headers["X-Frame-Options"] = "DENY";
-				ctx.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-				await next();
-			}
-		);
-
-		return app;
-	}
-
-	public static IApplicationBuilder UseApiRequestLogging(this IApplicationBuilder app)
-	{
-		app.UseSerilogRequestLogging(opt =>
-		{
-			opt.MessageTemplate =
-				"{RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0}ms [IP: {ClientIp}]";
-			opt.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
-			{
-				diagnosticContext.Set(
-					"ClientIp",
-					httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"
-				);
+				ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+				ForwardLimit = 1
 			};
-			opt.GetLevel = (httpContext, _, _) =>
-				httpContext.Request.Path.StartsWithSegments("/health")
-				|| httpContext.Request.Path.StartsWithSegments("/metrics")
-					? Serilog.Events.LogEventLevel.Verbose
-					: Serilog.Events.LogEventLevel.Information;
-		});
 
-		return app;
+			forwardedOptions.KnownProxies.Add(IPAddress.Parse("127.0.0.1"));
+			forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+			app.UseForwardedHeaders(forwardedOptions);
+		}
+
+		public void UseApiSecurityHeaders()
+		{
+			app.Use(
+				async (ctx, next) =>
+				{
+					ctx.Response.Headers.XContentTypeOptions = "nosniff";
+					ctx.Response.Headers.XFrameOptions = "DENY";
+					ctx.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+					await next();
+				}
+			);
+		}
+
+		public void UseApiRequestLogging()
+		{
+			app.UseSerilogRequestLogging(opt =>
+			{
+				opt.MessageTemplate =
+					"{RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0}ms [IP: {ClientIp}]";
+				opt.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+				{
+					diagnosticContext.Set(
+						"ClientIp",
+						httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"
+					);
+				};
+				opt.GetLevel = (httpContext, _, _) =>
+					httpContext.Request.Path.StartsWithSegments("/health")
+					|| httpContext.Request.Path.StartsWithSegments("/metrics")
+						? Serilog.Events.LogEventLevel.Verbose
+						: Serilog.Events.LogEventLevel.Information;
+			});
+		}
 	}
 }

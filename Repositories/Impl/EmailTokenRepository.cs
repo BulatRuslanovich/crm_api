@@ -19,17 +19,6 @@ public class EmailTokenRepository(AppDbContext db) : IEmailTokenRepository
 		await db.SaveChangesAsync();
 	}
 
-	public async Task DeleteAsync(EmailToken entity)
-	{
-		db.EmailTokens.Remove(entity);
-		await db.SaveChangesAsync();
-	}
-
-	public Task<EmailToken?> GetValidTokenAsync(string tokenHash, int tokenType) =>
-		db.EmailTokens.FirstOrDefaultAsync(t =>
-			t.TokenHash == tokenHash && t.TokenType == tokenType && t.ExpiresAt > DateTime.UtcNow
-		);
-
 	public Task<EmailToken?> GetActiveByUserAndTypeAsync(int usrId, int tokenType) =>
 		db.EmailTokens.FirstOrDefaultAsync(t =>
 			t.UsrId == usrId && t.TokenType == tokenType && t.ExpiresAt > DateTime.UtcNow

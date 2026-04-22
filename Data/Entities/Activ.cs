@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CrmWebApi.Data.Entities;
@@ -6,16 +7,16 @@ namespace CrmWebApi.Data.Entities;
 public class Activ
 {
 	[Column("activ_id")]
-	public int ActivId { get; set; }
+	public int ActivId { get; init; }
 
 	[Column("usr_id")]
-	public int UsrId { get; set; }
+	public int UsrId { get; init; }
 
 	[Column("org_id")]
-	public int? OrgId { get; set; }
+	public int? OrgId { get; init; }
 
 	[Column("phys_id")]
-	public int? PhysId { get; set; }
+	public int? PhysId { get; init; }
 
 	[Column("status_id")]
 	public int StatusId { get; set; }
@@ -27,14 +28,15 @@ public class Activ
 	public DateTimeOffset? ActivEnd { get; set; }
 
 	[Column("activ_description")]
+	[MaxLength(500)]
 	public string ActivDescription { get; set; } = string.Empty;
 
 	[Column("is_deleted")]
 	public bool IsDeleted { get; set; }
 
-	public Usr Usr { get; set; } = null!;
-	public Organization? Org { get; set; }
-	public Phys? Phys { get; set; }
-	public Status Status { get; set; } = null!;
-	public ICollection<ActivDrug> ActivDrugs { get; set; } = [];
+	public Usr Usr { get; init; } = null!;
+	public Organization? Org { get; init; }
+	public Phys? Phys { get; init; }
+	public Status Status { get; init; } = null!;
+	public ICollection<ActivDrug> ActivDrugs { get; init; } = [];
 }

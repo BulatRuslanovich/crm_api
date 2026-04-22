@@ -14,21 +14,17 @@ public class CreatePhysRequestValidator : AbstractValidator<CreatePhysRequest>
 			.WithMessage("Фамилия не должна превышать 100 символов");
 		RuleFor(x => x.FirstName)
 			.MaximumLength(100)
-			.WithMessage("Имя не должно превышать 100 символов")
-			.When(x => x.FirstName is not null);
+			.WithMessage("Имя не должно превышать 100 символов");
 		RuleFor(x => x.MiddleName)
 			.MaximumLength(100)
-			.WithMessage("Отчество не должно превышать 100 символов")
-			.When(x => x.MiddleName is not null);
+			.WithMessage("Отчество не должно превышать 100 символов");
 		RuleFor(x => x.Email)
 			.EmailAddress()
 			.WithMessage("Некорректный email")
 			.MaximumLength(200)
-			.WithMessage("Email не должен превышать 200 символов")
-			.When(x => x.Email is not null);
+			.WithMessage("Email не должен превышать 200 символов");
 		RuleFor(x => x.Phone)
 			.MaximumLength(20)
-			.WithMessage("Телефон не должен превышать 20 символов")
-			.When(x => x.Phone is not null);
+			.WithMessage("Телефон не должен превышать 20 символов");
 	}
 }

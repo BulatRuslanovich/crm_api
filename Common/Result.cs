@@ -14,7 +14,7 @@ public sealed class Result
 
 	public static Result Success() => new();
 
-	public static Result Failure(Error error) => new(error);
+	private static Result Failure(Error error) => new(error);
 
 	public static implicit operator Result(Error error) => Failure(error);
 }
@@ -38,7 +38,7 @@ public sealed class Result<T>
 
 	public static Result<T> Success(T value) => new(value);
 
-	public static Result<T> Failure(Error error) => new(error);
+	private static Result<T> Failure(Error error) => new(error);
 
 	public static implicit operator Result<T>(Error error) => Failure(error);
 

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CrmWebApi.Services.Impl;
 
-public class DrugService(AppDbContext db, ILogger<DrugService> logger) : IDrugService
+public class DrugService(AppDbContext db) : IDrugService
 {
 	public async Task<Result<PagedResponse<DrugResponse>>> GetAllAsync(
 		int page,
@@ -20,7 +20,7 @@ public class DrugService(AppDbContext db, ILogger<DrugService> logger) : IDrugSe
 
 		if (!string.IsNullOrEmpty(search))
 		{
-			string pattern = "%" + search + "%";
+			var pattern = "%" + search + "%";
 
 			query = query.Where(d =>
 				EF.Functions.ILike(d.DrugName, pattern)
@@ -59,7 +59,6 @@ public class DrugService(AppDbContext db, ILogger<DrugService> logger) : IDrugSe
 		};
 		db.Drugs.Add(drug);
 		await db.SaveChangesAsync();
-		logger.LogInformation("Drug created: {DrugName} (id={DrugId})", drug.DrugName, drug.DrugId);
 		return DrugResponse.From(drug);
 	}
 
@@ -74,7 +73,6 @@ public class DrugService(AppDbContext db, ILogger<DrugService> logger) : IDrugSe
 		drug.DrugForm = req.Form ?? drug.DrugForm;
 
 		await db.SaveChangesAsync();
-		logger.LogInformation("Drug updated: id={DrugId}", id);
 		return DrugResponse.From(drug);
 	}
 
@@ -86,7 +84,6 @@ public class DrugService(AppDbContext db, ILogger<DrugService> logger) : IDrugSe
 
 		drug.IsDeleted = true;
 		await db.SaveChangesAsync();
-		logger.LogInformation("Drug deleted: id={DrugId}", id);
 		return Result.Success();
 	}
 }

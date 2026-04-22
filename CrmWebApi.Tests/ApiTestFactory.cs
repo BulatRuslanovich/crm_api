@@ -21,7 +21,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CrmWebApi.Tests;
 
-public sealed class ApiTestFactory : WebApplicationFactory<Program>
+public abstract class ApiTestFactory : WebApplicationFactory<Program>
 {
 	protected override void ConfigureWebHost(IWebHostBuilder builder)
 	{

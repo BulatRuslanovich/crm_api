@@ -65,14 +65,14 @@ app.UseHttpMetrics();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Swagger UI (Scalar) 
+// Swagger UI (Scalar)
 
 app.MapOpenApi();
 app.MapScalarApiReference(options =>
 {
 	options.Title = "CRM API";
 	options.Theme = ScalarTheme.DeepSpace;
-	options.DefaultHttpClient = new(ScalarTarget.Shell, ScalarClient.Curl);
+	options.DefaultHttpClient = new KeyValuePair<ScalarTarget, ScalarClient>(ScalarTarget.Shell, ScalarClient.Curl);
 	options.AddPreferredSecuritySchemes("Bearer").AddHttpAuthentication("Bearer", _ => { });
 });
 
@@ -81,7 +81,7 @@ app.MapScalarApiReference(options =>
 app.MapHealthChecks("/health");
 
 // Prometheus метрики
-app.MapMetrics("/metrics");
+app.MapMetrics();
 
 app.MapControllers();
 

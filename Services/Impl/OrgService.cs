@@ -9,7 +9,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
-public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgService> logger)
+public class OrgService(IOrgRepository repo, HybridCache cache)
 	: IOrgService
 {
 	private static readonly string[] TypeTags = ["org-types"];
@@ -29,7 +29,7 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 
 		if (!string.IsNullOrEmpty(search))
 		{
-			string pattern = "%" + search + "%";
+			var pattern = "%" + search + "%";
 
 			query = query.Where(o =>
 				EF.Functions.ILike(o.OrgName, pattern)
@@ -88,11 +88,6 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 			OrgAddress = req.Address,
 		};
 		await repo.AddAsync(org);
-		logger.LogInformation(
-			"Organization created: {OrgName} (id={OrgId})",
-			org.OrgName,
-			org.OrgId
-		);
 		return await GetByIdAsync(org.OrgId);
 	}
 
@@ -110,7 +105,6 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 		org.OrgAddress = req.Address ?? org.OrgAddress;
 
 		await repo.UpdateAsync(org);
-		logger.LogInformation("Organization updated: id={OrgId}", id);
 		return await GetByIdAsync(id);
 	}
 
@@ -122,7 +116,6 @@ public class OrgService(IOrgRepository repo, HybridCache cache, ILogger<OrgServi
 
 		org.IsDeleted = true;
 		await repo.UpdateAsync(org);
-		logger.LogInformation("Organization deleted: id={OrgId}", id);
 		return Result.Success();
 	}
 

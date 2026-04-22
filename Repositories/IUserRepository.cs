@@ -12,7 +12,6 @@ public interface IUserRepository
 	public Task<Usr> AddAsync(Usr entity);
 	public Task<Usr> AddWithPoliciesAsync(Usr entity, IEnumerable<int> policyIds);
 	public Task UpdateAsync(Usr entity);
-	public Task AddPoliciesAsync(IEnumerable<UsrPolicy> policies);
 	public Task LinkPolicyAsync(int userId, int policyId);
 	public Task UnlinkPolicyAsync(int userId, int policyId);
 	public IQueryable<Policy> QueryPolicies();

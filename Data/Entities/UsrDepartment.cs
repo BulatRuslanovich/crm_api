@@ -6,14 +6,14 @@ namespace CrmWebApi.Data.Entities;
 public class UsrDepartment
 {
 	[Column("usr_id")]
-	public int UsrId { get; set; }
+	public int UsrId { get; init; }
 
 	[Column("department_id")]
-	public int DepartmentId { get; set; }
+	public int DepartmentId { get; init; }
 
 	[Column("created_at")]
-	public DateTimeOffset CreatedAt { get; set; }
+	public DateTimeOffset CreatedAt { get; init; }
 
-	public Usr Usr { get; set; } = null!;
-	public Department Department { get; set; } = null!;
+	public Usr Usr { get; init; } = null!;
+	public Department Department { get; init; } = null!;
 }

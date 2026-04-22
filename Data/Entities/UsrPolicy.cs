@@ -6,11 +6,11 @@ namespace CrmWebApi.Data.Entities;
 public class UsrPolicy
 {
 	[Column("usr_id")]
-	public int UsrId { get; set; }
+	public int UsrId { get; init; }
 
 	[Column("policy_id")]
-	public int PolicyId { get; set; }
+	public int PolicyId { get; init; }
 
-	public Usr Usr { get; set; } = null!;
-	public Policy Policy { get; set; } = null!;
+	public Usr Usr { get; init; } = null!;
+	public Policy Policy { get; init; } = null!;
 }

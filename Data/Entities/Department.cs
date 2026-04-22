@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CrmWebApi.Data.Entities;
@@ -6,13 +7,15 @@ namespace CrmWebApi.Data.Entities;
 public class Department
 {
 	[Column("department_id")]
-	public int DepartmentId { get; set; }
+	public int DepartmentId { get; init; }
+
 
 	[Column("department_name")]
-	public string DepartmentName { get; set; } = string.Empty;
+	[MaxLength(255)]
+	public string DepartmentName { get; init; } = string.Empty;
 
 	[Column("is_deleted")]
 	public bool IsDeleted { get; set; }
 
-	public ICollection<UsrDepartment> UsrDepartments { get; set; } = [];
+	public ICollection<UsrDepartment> UsrDepartments { get; init; } = [];
 }

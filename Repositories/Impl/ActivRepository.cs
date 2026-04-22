@@ -7,12 +7,9 @@ namespace CrmWebApi.Repositories.Impl;
 
 public class ActivRepository(AppDbContext db) : IActivRepository
 {
-	public IQueryable<Activ> Query() =>
-		db.Activs.Where(a => !a.IsDeleted).AsQueryable().AsSplitQuery().AsNoTracking();
-
 	public IQueryable<Activ> QueryForScope(Scope scope)
 	{
-		var baseQuery = Query();
+		var baseQuery = db.Activs.Where(a => !a.IsDeleted).AsQueryable().AsSplitQuery().AsNoTracking();
 		return scope.Visibility switch
 		{
 			Visibility.All => baseQuery,
@@ -25,13 +22,6 @@ public class ActivRepository(AppDbContext db) : IActivRepository
 			),
 			_ => baseQuery.Where(_ => false),
 		};
-	}
-
-	public async Task<Activ> AddAsync(Activ entity)
-	{
-		db.Activs.Add(entity);
-		await db.SaveChangesAsync();
-		return entity;
 	}
 
 	public async Task<Activ> AddWithDrugsAsync(Activ entity, IEnumerable<int> drugIds)

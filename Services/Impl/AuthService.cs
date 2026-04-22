@@ -46,14 +46,14 @@ public class AuthService(
 		await userRepo.AddAsync(user);
 
 		if (!requireEmailConfirmation)
-			return new PendingConfirmationResponse(req.Email!, EmailConfirmationRequired: false);
+			return new PendingConfirmationResponse(req.Email, EmailConfirmationRequired: false);
 
 		try
 		{
 			var code = await SendOtpAsync(user, TokenTypeConfirmation, expiryHours: 24);
 			var displayName = BuildDisplayName(req.FirstName, req.LastName, req.Login);
-			await emailService.SendEmailConfirmationAsync(req.Email!, displayName, code);
-			return new PendingConfirmationResponse(req.Email!, EmailConfirmationRequired: true);
+			await emailService.SendEmailConfirmationAsync(req.Email, displayName, code);
+			return new PendingConfirmationResponse(req.Email, EmailConfirmationRequired: true);
 		}
 		catch (Exception ex)
 		{
@@ -307,7 +307,7 @@ public class AuthService(
 	private static string HashToken(string token)
 	{
 		var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-		return Convert.ToHexString(bytes).ToLowerInvariant();
+		return Convert.ToHexString(bytes).ToUpperInvariant();
 	}
 
 	private string HashOtp(string code)
@@ -320,7 +320,7 @@ public class AuthService(
 			Encoding.UTF8.GetBytes(secret),
 			Encoding.UTF8.GetBytes(code.Trim())
 		);
-		return Convert.ToHexString(bytes).ToLowerInvariant();
+		return Convert.ToHexString(bytes).ToUpperInvariant();
 	}
 
 	private static bool FixedTimeEquals(string left, string right) =>

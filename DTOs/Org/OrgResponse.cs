@@ -11,17 +11,4 @@ public record OrgResponse(
 	double Latitude,
 	double Longitude,
 	string Address
-)
-{
-	public static OrgResponse From(Organization o) =>
-		new(
-			o.OrgId,
-			o.OrgTypeId,
-			o.OrgType.OrgTypeName,
-			o.OrgName,
-			o.OrgInn,
-			o.OrgLatitude,
-			o.OrgLongitude,
-			o.OrgAddress
-		);
-}
+);

@@ -5,7 +5,6 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using CrmWebApi.Common;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CrmWebApi.Tests;
