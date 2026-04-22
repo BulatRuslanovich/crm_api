@@ -1,0 +1,119 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crm_db
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_user -d crm_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  api:
+    image: ${CRMWEBAPI_IMAGE:-ghcr.io/bulatruslanovich/crmwebapi:latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Host=db;Port=5432;Database=crm_db;Username=crm_user;Password=${DB_PASSWORD}
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: PharmaCrmApi
+      Jwt__Audience: PharmaCrmClient
+      Auth__RequireEmailConfirmation: ${REQUIRE_EMAIL_CONFIRMATION:-true}
+      Auth__OtpHashSecret: ${OTP_HASH_SECRET:-}
+      Cache__RedisConnectionString: ${REDIS_CONNECTION_STRING:-redis:6379,abortConnect=false}
+      ForwardedHeaders__KnownProxies__0: 127.0.0.1
+      ForwardedHeaders__KnownProxies__1: 172.28.0.10
+      Email__Host: smtp.gmail.com
+      Email__Port: "587"
+      Email__Username: ${EMAIL_USERNAME}
+      Email__Password: ${EMAIL_PASSWORD}
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS}
+      Email__FromName: CRM System
+    networks:
+      - internal
+      - egress
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    networks:
+      - internal
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/bulatruslanovich/crm-web-portal:latest}
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - frontend
+    networks:
+      internal:
+        ipv4_address: 172.28.0.10
+      public: {}
+
+  db-backup:
+    image: prodrigestivill/postgres-backup-local:17-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: crm_db
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 2
+      BACKUP_KEEP_WEEKS: 0
+      BACKUP_KEEP_MONTHS: 0
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - db_backups:/backups
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+  public:
+    driver: bridge
+  egress:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  db_backups:

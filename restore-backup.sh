@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-COMPOSE="docker compose"
+COMPOSE="docker compose -f compose.app.yml"
 DB_USER="crm_user"
 DB_NAME="crm_db"
 

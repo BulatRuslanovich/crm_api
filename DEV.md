@@ -45,7 +45,7 @@ dotnet restore
 Для разработки есть отдельный compose-файл с Postgres на `localhost:5432`:
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f compose.dev.yml up -d
 ```
 
 **Креды по умолчанию:**
@@ -66,8 +66,8 @@ Production compose дополнительно поднимает Redis и пер
 **Сброс БД** (полностью удалит данные):
 
 ```bash
-docker compose -f docker-compose.dev.yml down -v
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f compose.dev.yml down -v
+docker compose -f compose.dev.yml up -d
 ```
 
 **Генерация mock данных**:
@@ -213,8 +213,8 @@ CrmWebApi/
 Контейнер не запущен:
 
 ```bash
-docker compose -f docker-compose.dev.yml ps
-docker compose -f docker-compose.dev.yml logs db
+docker compose -f compose.dev.yml ps
+docker compose -f compose.dev.yml logs db
 ```
 
 ### `JWT secret must be at least 32 chars`

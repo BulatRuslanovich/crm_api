@@ -56,5 +56,23 @@
 Защищённые эндпоинты требуют заголовок `Authorization: Bearer <access_token>`.
 Scalar UI: `http://localhost:5000/scalar/v1`.
 
+## Docker Compose
+
+Compose-файлы разделены по ролям:
+
+| Файл | Назначение |
+|---|---|
+| `compose.app.yml` | production app stack: API, frontend, Caddy, Postgres, Redis, DB backup |
+| `compose.obs.yml` | observability overlay: Prometheus, Loki, Promtail, cAdvisor, Grafana |
+| `compose.dev.yml` | локальная БД для разработки |
+
+```bash
+docker compose -f compose.app.yml up -d
+docker compose -f compose.app.yml -f compose.obs.yml up -d
+docker compose -f compose.dev.yml up -d
+```
+
+`docker-compose.yml` и `docker-compose.dev.yml` оставлены как совместимые entrypoints через `include`.
+
 
 - **[DEV.md](DEV.md)** — памятка разработчику: как поднять проект локально
