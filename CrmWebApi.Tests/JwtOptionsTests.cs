@@ -1,4 +1,4 @@
-﻿using CrmWebApi.Options;
+using CrmWebApi.Options;
 
 namespace CrmWebApi.Tests;
 
