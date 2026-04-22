@@ -157,14 +157,38 @@ public class AuthServiceTests
 
 	private sealed class InMemoryEmailTokenRepository : IEmailTokenRepository
 	{
-		public Task<EmailToken> AddAsync(EmailToken entity) => Task.FromResult(entity);
+		private readonly List<EmailToken> _tokens = [];
+
+		public Task<EmailToken?> CreateIfNoActiveAsync(EmailToken entity)
+		{
+			if (
+				_tokens.Any(t =>
+					t.UsrId == entity.UsrId
+					&& t.TokenType == entity.TokenType
+					&& t.ExpiresAt > DateTime.UtcNow
+				)
+			)
+				return Task.FromResult<EmailToken?>(null);
+
+			_tokens.RemoveAll(t => t.UsrId == entity.UsrId && t.TokenType == entity.TokenType);
+			_tokens.Add(entity);
+			return Task.FromResult<EmailToken?>(entity);
+		}
 
 		public Task UpdateAsync(EmailToken entity) => Task.CompletedTask;
 
 		public Task<EmailToken?> GetActiveByUserAndTypeAsync(int usrId, int tokenType) =>
-			Task.FromResult<EmailToken?>(null);
+			Task.FromResult(
+				_tokens.FirstOrDefault(t =>
+					t.UsrId == usrId && t.TokenType == tokenType && t.ExpiresAt > DateTime.UtcNow
+				)
+			);
 
-		public Task DeleteAllForUserAsync(int usrId, int tokenType) => Task.CompletedTask;
+		public Task DeleteAllForUserAsync(int usrId, int tokenType)
+		{
+			_tokens.RemoveAll(t => t.UsrId == usrId && t.TokenType == tokenType);
+			return Task.CompletedTask;
+		}
 	}
 
 	private sealed class NoopEmailService : IEmailService

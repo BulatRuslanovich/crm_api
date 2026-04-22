@@ -51,6 +51,9 @@ public class AuthService(
 		try
 		{
 			var code = await SendOtpAsync(user, TokenTypeConfirmation, expiryHours: 24);
+			if (code is null)
+				throw new InvalidOperationException("Active confirmation OTP already exists for new user");
+
 			var displayName = BuildDisplayName(req.FirstName, req.LastName, req.Login);
 			await emailService.SendEmailConfirmationAsync(req.Email, displayName, code);
 			return new PendingConfirmationResponse(req.Email, EmailConfirmationRequired: true);
@@ -91,16 +94,9 @@ public class AuthService(
 		if (user is null || user.IsEmailConfirmed)
 			return Result.Success();
 
-		var existing = await emailTokenRepo.GetActiveByUserAndTypeAsync(
-			user.UsrId,
-			TokenTypeConfirmation
-		);
-
-		// INFO: Frontend should create cooldown logic
-		if (existing is not null)
-			return Result.Success();
-
 		var code = await SendOtpAsync(user, TokenTypeConfirmation, expiryHours: 24);
+		if (code is null)
+			return Result.Success();
 
 		var name = BuildDisplayName(user.UsrFirstname, user.UsrLastname, user.UsrLogin);
 		try
@@ -171,16 +167,9 @@ public class AuthService(
 		if (user is null)
 			return Result.Success();
 
-		var existing = await emailTokenRepo.GetActiveByUserAndTypeAsync(
-			user.UsrId,
-			TokenTypePasswordReset
-		);
-
-		// INFO: Frontend should create cooldown logic
-		if (existing is not null)
-			return Result.Success();
-
 		var code = await SendOtpAsync(user, TokenTypePasswordReset, expiryHours: 1);
+		if (code is null)
+			return Result.Success();
 
 		var name = BuildDisplayName(user.UsrFirstname, user.UsrLastname, user.UsrLogin);
 		try
@@ -212,7 +201,7 @@ public class AuthService(
 		return Result.Success();
 	}
 
-	private async Task<string> SendOtpAsync(Usr user, int tokenType, int expiryHours)
+	private async Task<string?> SendOtpAsync(Usr user, int tokenType, int expiryHours)
 	{
 		var codeBytes = RandomNumberGenerator.GetBytes(4);
 		var code = (BitConverter.ToUInt32(codeBytes) % 900_000 + 100_000).ToString();
@@ -223,8 +212,8 @@ public class AuthService(
 			TokenType = tokenType,
 			ExpiresAt = DateTime.UtcNow.AddHours(expiryHours),
 		};
-		await emailTokenRepo.AddAsync(stored);
-		return code;
+		var created = await emailTokenRepo.CreateIfNoActiveAsync(stored);
+		return created is null ? null : code;
 	}
 
 	private const int MaxOtpAttempts = 5;

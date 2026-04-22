@@ -18,7 +18,7 @@ public class AuthController(
 	IWebHostEnvironment environment
 ) : ApiController
 {
-	private const string RefreshTokenCookieName = "__Host-refreshToken";
+	private readonly string RefreshTokenCookieName = environment.IsProduction() ? "__Host-refreshToken" : "refreshToken";
 
 	[HttpPost("register")]
 	[AllowAnonymous]

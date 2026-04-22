@@ -183,6 +183,7 @@ CREATE INDEX idx_activ_drug_drug  ON activ_drug(drug_id);
 
 CREATE INDEX idx_refresh_usr ON refresh(usr_id);
 CREATE INDEX idx_email_token_usr ON email_token(usr_id);
+CREATE UNIQUE INDEX uniq_email_token_usr_type ON email_token(usr_id, token_type);
 
 CREATE UNIQUE INDEX uniq_usr_email_active
 ON usr(usr_email)

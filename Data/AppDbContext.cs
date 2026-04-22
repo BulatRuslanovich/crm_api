@@ -38,5 +38,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 		modelBuilder.Entity<ActivDrug>().HasIndex(ad => new { ad.ActivId, ad.DrugId }).IsUnique();
 
 		modelBuilder.Entity<UsrDepartment>().HasKey(ud => new { ud.UsrId, ud.DepartmentId });
+
+		modelBuilder.Entity<EmailToken>().HasIndex(t => new { t.UsrId, t.TokenType }).IsUnique();
 	}
 }
