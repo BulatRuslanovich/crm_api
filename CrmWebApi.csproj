@@ -6,6 +6,10 @@
 		<RootNamespace>CrmWebApi</RootNamespace>
 		<NoWarn>$(NoWarn);NU1900</NoWarn>
 		<AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<AnalysisMode>AllEnabledByDefault</AnalysisMode>
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
 	  <UserSecretsId>f7e0107d-2586-4b9b-a071-e87fe318709e</UserSecretsId>
   </PropertyGroup>
 
@@ -18,20 +22,20 @@
 
 	<ItemGroup>
 		<PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
-		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.4.0" />
-		<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
-		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-		<PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
-		<PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.7" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.5.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.7" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+		<PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.7" />
+		<PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
 		<PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
-		<PackageReference Include="Scalar.AspNetCore" Version="2.13.13" />
+		<PackageReference Include="Scalar.AspNetCore" Version="2.14.3" />
 		<PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
 		<PackageReference Include="Serilog.Expressions" Version="5.0.0" />
 		<PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
 		<PackageReference Include="MailKit" Version="4.16.0" />
-		<PackageReference Include="FluentValidation" Version="11.11.0" />
-		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+		<PackageReference Include="FluentValidation" Version="12.1.1" />
+		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
 	</ItemGroup>
 </Project>
