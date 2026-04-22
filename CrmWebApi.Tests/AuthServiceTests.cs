@@ -18,6 +18,7 @@ public class AuthServiceTests
 	[Fact]
 	public async Task RefreshAsync_ConsumesRefreshTokenOnlyOnce()
 	{
+		// Arrange: create one valid refresh token stored by hash, as production does.
 		var rawRefreshToken = "raw-refresh-token";
 		var user = TestUsers.UserWithRole(1, "Admin");
 		var refreshRepo = new InMemoryRefreshRepository(
@@ -30,9 +31,11 @@ public class AuthServiceTests
 		);
 		var service = CreateService([user], refreshRepo);
 
+		// Act: try to refresh twice with the same raw token.
 		var first = await service.RefreshAsync(rawRefreshToken);
 		var second = await service.RefreshAsync(rawRefreshToken);
 
+		// Assert: the first call consumes the token, the second call is rejected.
 		Assert.True(first.IsSuccess);
 		Assert.NotNull(first.Value?.RefreshToken);
 		Assert.False(second.IsSuccess);
@@ -41,12 +44,15 @@ public class AuthServiceTests
 	[Fact]
 	public async Task ResetPasswordAsync_ReturnsSuccessForUnknownEmail()
 	{
+		// Arrange: no user exists with the requested email.
 		var service = CreateService([], new InMemoryRefreshRepository());
 
+		// Act: request password reset for an unknown email.
 		var result = await service.ResetPasswordAsync(
 			new ResetPasswordRequest("missing@example.com", "123456", "newPassword1")
 		);
 
+		// Assert: the service does not leak whether an email is registered.
 		Assert.True(result.IsSuccess);
 	}
 
