@@ -307,7 +307,7 @@ public class AuthService(
 	private static string HashToken(string token)
 	{
 		var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-		return Convert.ToHexString(bytes).ToUpperInvariant();
+		return Convert.ToHexString(bytes).ToLowerInvariant();
 	}
 
 	private string HashOtp(string code)
@@ -320,7 +320,7 @@ public class AuthService(
 			Encoding.UTF8.GetBytes(secret),
 			Encoding.UTF8.GetBytes(code.Trim())
 		);
-		return Convert.ToHexString(bytes).ToUpperInvariant();
+		return Convert.ToHexString(bytes).ToLowerInvariant();
 	}
 
 	private static bool FixedTimeEquals(string left, string right) =>

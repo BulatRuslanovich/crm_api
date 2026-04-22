@@ -87,34 +87,32 @@ public class AuthServiceTests
 
 	private sealed class InMemoryUserRepository(IEnumerable<Usr> users) : IUserRepository
 	{
-		private readonly List<Usr> users = users.ToList();
+		private readonly List<Usr> _users = users.ToList();
 
 		public IQueryable<Usr> QueryForScope(Scope scope) => QueryHard();
 
-		public IQueryable<Usr> QueryHard() => AsAsyncQueryable(users.Where(u => !u.IsDeleted));
+		public IQueryable<Usr> QueryHard() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
 
-		public IQueryable<Usr> QueryLite() => AsAsyncQueryable(users.Where(u => !u.IsDeleted));
+		public IQueryable<Usr> QueryLite() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
 
-		public IQueryable<Usr> QueryForUpdate() => AsAsyncQueryable(users.Where(u => !u.IsDeleted));
+		public IQueryable<Usr> QueryForUpdate() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
 
 		public Task<bool> ExistsAsync(Expression<Func<Usr, bool>> predicate) =>
-			Task.FromResult(users.AsQueryable().Any(predicate));
+			Task.FromResult(_users.AsQueryable().Any(predicate));
 
 		public Task<Usr> AddAsync(Usr entity)
 		{
-			users.Add(entity);
+			_users.Add(entity);
 			return Task.FromResult(entity);
 		}
 
 		public Task<Usr> AddWithPoliciesAsync(Usr entity, IEnumerable<int> policyIds)
 		{
-			users.Add(entity);
+			_users.Add(entity);
 			return Task.FromResult(entity);
 		}
 
 		public Task UpdateAsync(Usr entity) => Task.CompletedTask;
-
-		public Task AddPoliciesAsync(IEnumerable<UsrPolicy> policies) => Task.CompletedTask;
 
 		public Task LinkPolicyAsync(int userId, int policyId) => Task.CompletedTask;
 
@@ -125,34 +123,34 @@ public class AuthServiceTests
 
 	private sealed class InMemoryRefreshRepository(params Refresh[] refreshes) : IRefreshRepository
 	{
-		private readonly List<Refresh> refreshes = refreshes.ToList();
+		private readonly List<Refresh> _refreshes = refreshes.ToList();
 
 		public Task<Refresh> AddAsync(Refresh entity)
 		{
-			refreshes.Add(entity);
+			_refreshes.Add(entity);
 			return Task.FromResult(entity);
 		}
 
 		public Task DeleteAsync(Refresh entity)
 		{
-			refreshes.Remove(entity);
+			_refreshes.Remove(entity);
 			return Task.CompletedTask;
 		}
 
 		public Task<Refresh?> GetByTokenHashAsync(string tokenHash) =>
-			Task.FromResult(refreshes.FirstOrDefault(r => r.RefreshTokenHash == tokenHash));
+			Task.FromResult(_refreshes.FirstOrDefault(r => r.RefreshTokenHash == tokenHash));
 
 		public Task<Refresh?> ConsumeByTokenHashAsync(string tokenHash)
 		{
-			var refresh = refreshes.FirstOrDefault(r => r.RefreshTokenHash == tokenHash);
+			var refresh = _refreshes.FirstOrDefault(r => r.RefreshTokenHash == tokenHash);
 			if (refresh is not null)
-				refreshes.Remove(refresh);
+				_refreshes.Remove(refresh);
 			return Task.FromResult(refresh);
 		}
 
 		public Task RevokeAllForUserAsync(int usrId)
 		{
-			refreshes.RemoveAll(r => r.UsrId == usrId);
+			_refreshes.RemoveAll(r => r.UsrId == usrId);
 			return Task.CompletedTask;
 		}
 	}
@@ -162,11 +160,6 @@ public class AuthServiceTests
 		public Task<EmailToken> AddAsync(EmailToken entity) => Task.FromResult(entity);
 
 		public Task UpdateAsync(EmailToken entity) => Task.CompletedTask;
-
-		public Task DeleteAsync(EmailToken entity) => Task.CompletedTask;
-
-		public Task<EmailToken?> GetValidTokenAsync(string tokenHash, int tokenType) =>
-			Task.FromResult<EmailToken?>(null);
 
 		public Task<EmailToken?> GetActiveByUserAndTypeAsync(int usrId, int tokenType) =>
 			Task.FromResult<EmailToken?>(null);

@@ -51,7 +51,7 @@ public class ActivsController(IActivService service) : ApiController
 	[ProducesResponseType<ActivResponse>(StatusCodes.Status201Created)]
 	public async Task<IActionResult> Create([FromBody] CreateActivRequest req)
 	{
-		if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usrId))
+		if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usrId))
 		{
 			return BadRequest();
 		}

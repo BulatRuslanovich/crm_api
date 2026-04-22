@@ -58,7 +58,7 @@ public abstract class ContractTestBase(ApiTestFactory factory)
 		return json;
 	}
 
-	protected static void AssertProblemDetailsContent(HttpResponseMessage response) =>
+	private static void AssertProblemDetailsContent(HttpResponseMessage response) =>
 		Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
 
 	protected static async Task<JsonElement> AssertProblemDetailsAsync(
