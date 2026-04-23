@@ -6,6 +6,5 @@ public record CreateActivRequest(
 	int StatusId,
 	DateTimeOffset Start,
 	DateTimeOffset? End,
-	string Description,
-	List<int> DrugIds
+	string Description
 );

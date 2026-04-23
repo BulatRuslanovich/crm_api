@@ -57,16 +57,13 @@ public static class HostConfigurationExtensions
 						"Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor",
 						Serilog.Events.LogEventLevel.Warning
 					)
-					.MinimumLevel.Override(
-						"Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor",
-						Serilog.Events.LogEventLevel.Warning
-					)
 					// .MinimumLevel.Override("Microsoft.AspNetCore.Cors", Serilog.Events.LogEventLevel.Warning)
 					.MinimumLevel.Override("Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker", Serilog.Events.LogEventLevel.Warning)
-					.MinimumLevel.Override(
-						"Microsoft.EntityFrameworkCore.Database.Command",
-						Serilog.Events.LogEventLevel.Warning
-					);
+					// .MinimumLevel.Override(
+					// 	"Microsoft.EntityFrameworkCore.Database.Command",
+					// 	Serilog.Events.LogEventLevel.Warning
+					// )
+					;
 
 				if (!context.HostingEnvironment.IsProduction())
 					config.WriteTo.Debug();

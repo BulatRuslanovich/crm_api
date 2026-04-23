@@ -24,10 +24,8 @@ public class ActivRepository(AppDbContext db) : IActivRepository
 		};
 	}
 
-	public async Task<Activ> AddWithDrugsAsync(Activ entity, IEnumerable<int> drugIds)
+	public async Task<Activ> AddAsync(Activ entity)
 	{
-		foreach (var drugId in drugIds)
-			entity.ActivDrugs.Add(new ActivDrug { DrugId = drugId });
 		db.Activs.Add(entity);
 		await db.SaveChangesAsync();
 		return entity;

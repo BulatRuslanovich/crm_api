@@ -52,7 +52,7 @@ public class ActivService(IActivRepository repo) : IActivService
 
 		if (!string.IsNullOrEmpty(searchValue))
 		{
-			string pattern = "%" + searchValue + "%";
+			var pattern = "%" + searchValue + "%";
 			query = query.Where(a =>
 				EF.Functions.ILike(a.ActivDescription, pattern)
 				|| (a.Org != null && EF.Functions.ILike(a.Org.OrgName, pattern))
@@ -137,7 +137,8 @@ public class ActivService(IActivRepository repo) : IActivService
 			ActivEnd = req.End,
 			ActivDescription = req.Description,
 		};
-		await repo.AddWithDrugsAsync(activ, req.DrugIds.Distinct());
+
+		await repo.AddAsync(activ);
 
 		return await GetByIdAsync(activ.ActivId, Scope.ForAll(usrId));
 	}

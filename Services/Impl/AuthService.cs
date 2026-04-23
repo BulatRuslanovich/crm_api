@@ -118,16 +118,18 @@ public class AuthService(
 	{
 		var user = await userRepo
 			.QueryLite()
-			.FirstOrDefaultAsync(u => u.UsrLogin == req.Login && !u.IsDeleted);
+			.FirstOrDefaultAsync(u => u.UsrLogin == req.Login);
 
 		if (user is null || !passwordHasher.Verify(req.Password, user.UsrPasswordHash))
 			return Error.Unauthorized("Неверный логин или пароль");
 
 		if (IsEmailConfirmationRequired() && !user.IsEmailConfirmed)
+		{
 			return Error.Forbidden(
 				"Email не подтверждён",
 				new Dictionary<string, object?> { ["email"] = user.UsrEmail }
 			);
+		}
 
 		return await sessionService.IssueAsync(user);
 	}
