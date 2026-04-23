@@ -1,5 +1,7 @@
 using System.IO.Compression;
 using System.Net;
+using System.Text;
+using System.Text.RegularExpressions;
 using CrmWebApi.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -52,6 +54,16 @@ public static class HostConfigurationExtensions
 						Serilog.Events.LogEventLevel.Warning
 					)
 					.MinimumLevel.Override(
+						"Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor",
+						Serilog.Events.LogEventLevel.Warning
+					)
+					.MinimumLevel.Override(
+						"Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor",
+						Serilog.Events.LogEventLevel.Warning
+					)
+					// .MinimumLevel.Override("Microsoft.AspNetCore.Cors", Serilog.Events.LogEventLevel.Warning)
+					.MinimumLevel.Override("Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker", Serilog.Events.LogEventLevel.Warning)
+					.MinimumLevel.Override(
 						"Microsoft.EntityFrameworkCore.Database.Command",
 						Serilog.Events.LogEventLevel.Warning
 					);
@@ -77,7 +89,7 @@ public static class HostConfigurationExtensions
 							Version = "v1",
 							Description = """
 								## Overview
-								REST API for PHARMO CRM, a pharmaceutical customer relationship management platform.
+								REST API for PHARMO CRM.
 
 								## Authentication
 								Most endpoints require a Bearer JWT token. Obtain a token via `POST /api/auth/login`, then click **Authorize** and paste:
@@ -305,6 +317,39 @@ public static class HostConfigurationExtensions
 			);
 		}
 
+		private static bool ShouldLogBody(HttpRequest request) =>
+			request.ContentLength is > 0 and < 50_000 &&
+			request.Method is "POST" or "PUT" or "PATCH" &&
+			request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true;
+
+
+		private static async Task<string> ReadStreamAsync(Stream stream, int maxSizeBytes)
+		{
+			using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+			var buffer = new char[maxSizeBytes];
+			var read = await reader.ReadAsync(buffer, 0, maxSizeBytes);
+			return new string(buffer, 0, read).Trim();
+		}
+
+		private static string SanitizeSensitiveData(string json)
+		{
+			if (string.IsNullOrWhiteSpace(json)) return json;
+
+			var sensitiveFields = new[] {
+				"password", "secret", "token", "accessToken", "refreshToken",
+				"apiKey", "creditCard", "ssn", "passport"
+			};
+
+			var result = json;
+			foreach (var field in sensitiveFields)
+			{
+				var regex = new Regex($"\"{field}\"\\s*:\\s*\"[^\"]*\"", RegexOptions.IgnoreCase);
+				result = regex.Replace(result, $"\"{field}\":\"***\"");
+			}
+
+			return result;
+		}
+
 		public void UseApiRequestLogging()
 		{
 			app.UseSerilogRequestLogging(opt =>
@@ -318,12 +363,18 @@ public static class HostConfigurationExtensions
 						httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"
 					);
 				};
-				opt.GetLevel = (httpContext, _, _) =>
+
+				opt.GetLevel = (httpContext, elapsed, _) =>
 					httpContext.Request.Path.StartsWithSegments("/health")
 					|| httpContext.Request.Path.StartsWithSegments("/metrics")
 						? Serilog.Events.LogEventLevel.Verbose
-						: Serilog.Events.LogEventLevel.Information;
+						: httpContext.Response.StatusCode >= 400
+							? Serilog.Events.LogEventLevel.Warning
+							: Serilog.Events.LogEventLevel.Information;
+
 			});
+
+
 		}
 	}
 }
