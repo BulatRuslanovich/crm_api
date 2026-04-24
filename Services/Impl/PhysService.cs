@@ -135,13 +135,13 @@ public class PhysService(IPhysRepository repo, HybridCache cache)
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var phys = await repo.QueryLite().FirstOrDefaultAsync(p => p.PhysId == id);
-		if (phys is null)
-			return Error.NotFound($"Физическое лицо {id} не найдено");
+		var affected = await repo.QueryLite()
+		.Where(a => a.PhysId == id)
+		 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
 
-		phys.IsDeleted = true;
-		await repo.UpdateAsync(phys);
-		return Result.Success();
+		return affected == 0
+			? Error.NotFound($"Физическое лицо {id} не найдено")
+			: Result.Success();
 	}
 
 	public async Task<Result> LinkOrgAsync(int physId, int orgId)

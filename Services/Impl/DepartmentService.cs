@@ -61,13 +61,13 @@ public class DepartmentService(IDepartmentRepository repo)
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var entity = await repo.FindAsync(id);
-		if (entity is null)
-			return Error.NotFound($"Департамент {id} не найден");
+		var affected = await repo.Query()
+			.Where(a => a.DepartmentId == id)
+			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
 
-		entity.IsDeleted = true;
-		await repo.UpdateAsync(entity);
-		return Result.Success();
+		return affected == 0
+			? Error.NotFound($"Департамент {id} не найден")
+			: Result.Success();
 	}
 
 	public async Task<Result> AddUserAsync(int departmentId, int usrId)

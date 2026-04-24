@@ -6,6 +6,7 @@ namespace CrmWebApi.Repositories;
 public interface IActivRepository
 {
 	public IQueryable<Activ> QueryForScope(Scope scope);
+	public IQueryable<ActivDrug> QueryDrugsForActivs(IReadOnlyList<int> activIds);
 	public Task<Activ> AddAsync(Activ entity);
 	public Task UpdateAsync(Activ entity);
 	public Task LinkDrugAsync(int activId, int drugId);

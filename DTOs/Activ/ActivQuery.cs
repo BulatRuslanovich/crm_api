@@ -7,11 +7,11 @@ public record ActivQuery(
 	ActivSortBy? SortBy,
 	bool SortDesc,
 	int[]? Statuses,
-	DateTimeOffset? DateFrom,
-	DateTimeOffset? DateTo,
 	int? UsrId)
 {
 	public int Page { get; set; } = 1;
 	public int PageSize { get; set; } = 100;
+	public DateTimeOffset? DateFrom { get; set; }
+	public DateTimeOffset? DateTo { get; set; }
 	public bool IncludeTotal { get; init; } = true;
 }

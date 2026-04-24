@@ -20,7 +20,7 @@ public class AuthService(
 {
 	public async Task<Result<PendingConfirmationResponse>> RegisterAsync(RegisterRequest req)
 	{
-		if (await userRepo.ExistsAsync(u => u.UsrLogin == req.Login || u.UsrEmail == req.Email))
+		if (await userRepo.ExistsAsync(u => (u.UsrLogin == req.Login || u.UsrEmail == req.Email) && !u.IsDeleted))
 			return Error.Conflict("Пользователь с такими данными уже зарегистрирован");
 
 		var requireEmailConfirmation = IsEmailConfirmationRequired();
@@ -89,7 +89,7 @@ public class AuthService(
 		if (!IsEmailConfirmationRequired())
 			return Result.Success();
 
-		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrEmail == email && !u.IsDeleted);
+		var user = await userRepo.QueryForRead().FirstOrDefaultAsync(u => u.UsrEmail == email && !u.IsDeleted);
 		if (user is null || user.IsEmailConfirmed)
 			return Result.Success();
 
@@ -117,7 +117,7 @@ public class AuthService(
 	public async Task<Result<AuthTokens>> LoginAsync(LoginRequest req)
 	{
 		var user = await userRepo
-			.QueryLite()
+			.QueryWithPolicies()
 			.FirstOrDefaultAsync(u => u.UsrLogin == req.Login);
 
 		if (user is null || !passwordHasher.Verify(req.Password, user.UsrPasswordHash))
@@ -142,7 +142,7 @@ public class AuthService(
 	public async Task<Result> ForgotPasswordAsync(string email)
 	{
 		var user = await userRepo
-			.QueryLite()
+			.QueryForRead()
 			.FirstOrDefaultAsync(u => u.UsrEmail == email && u.IsEmailConfirmed && !u.IsDeleted);
 		if (user is null)
 			return Result.Success();
@@ -170,7 +170,7 @@ public class AuthService(
 
 	public async Task<Result> ResetPasswordAsync(ResetPasswordRequest req)
 	{
-		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail == req.Email);
+		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail == req.Email && u.IsEmailConfirmed && !u.IsDeleted);
 		if (user is null)
 			return Result.Success();
 

@@ -10,7 +10,7 @@ public class UserRepository(AppDbContext db) : IUserRepository
 {
 	public IQueryable<Usr> QueryForScope(Scope scope)
 	{
-		var baseQuery = QueryHard();
+		var baseQuery = QueryWithPolicies();
 		return scope.Visibility switch
 		{
 			Visibility.All => baseQuery,
@@ -25,15 +25,14 @@ public class UserRepository(AppDbContext db) : IUserRepository
 		};
 	}
 
-	public IQueryable<Usr> QueryHard() =>
+	public IQueryable<Usr> QueryWithPolicies() =>
 		db
 			.Usrs.Where(u => !u.IsDeleted)
 			.Include(u => u.UsrPolicies)
-				.ThenInclude(up => up.Policy)
-			.AsSplitQuery()
+			.ThenInclude(up => up.Policy)
 			.AsNoTracking();
 
-	public IQueryable<Usr> QueryLite() => db.Usrs.Where(u => !u.IsDeleted).AsNoTracking();
+	public IQueryable<Usr> QueryForRead() => db.Usrs.Where(u => !u.IsDeleted).AsNoTracking();
 
 	public IQueryable<Usr> QueryForUpdate() => db.Usrs.Where(u => !u.IsDeleted);
 

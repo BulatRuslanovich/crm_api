@@ -110,13 +110,13 @@ public class OrgService(IOrgRepository repo, HybridCache cache)
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var org = await repo.QueryLite().FirstOrDefaultAsync(o => o.OrgId == id);
-		if (org is null)
-			return Error.NotFound($"Организация {id} не найдена");
+		var affected = await repo.QueryLite()
+			.Where(a => a.OrgId == id)
+			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
 
-		org.IsDeleted = true;
-		await repo.UpdateAsync(org);
-		return Result.Success();
+		return affected == 0
+			? Error.NotFound($"Организация {id} не найдена")
+			: Result.Success();
 	}
 
 	public async Task<Result<IEnumerable<OrgTypeResponse>>> GetAllTypesAsync() =>

@@ -19,6 +19,11 @@ public class ActivsController(IActivService service) : ApiController
 		if (!TryGetScope(out var scope, out var forbid))
 			return forbid!;
 
+		if (query.DateFrom != null && query.DateTo != null && query.DateFrom > query.DateTo)
+		{
+			(query.DateTo, query.DateFrom) = (query.DateFrom, query.DateTo);
+		}
+
 		var maxPageSize = query.DateFrom != null ? 5000 : 500;
 		var realPageSize = Math.Clamp(query.PageSize, 1, maxPageSize);
 

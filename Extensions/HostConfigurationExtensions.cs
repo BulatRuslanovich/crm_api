@@ -11,7 +11,6 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Templates;
 using Serilog.Templates.Themes;
-using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace CrmWebApi.Extensions;
 
@@ -29,7 +28,6 @@ public static class HostConfigurationExtensions
 		["Microsoft.AspNetCore.Authentication"] = LogEventLevel.Warning,
 		["Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor"] = LogEventLevel.Warning,
 		["Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker"] = LogEventLevel.Warning,
-		// Раскомментируй, когда созреешь:
 		// ["Microsoft.EntityFrameworkCore.Database.Command"] = LogEventLevel.Warning,
 	};
 
@@ -72,6 +70,7 @@ public static class HostConfigurationExtensions
 	{
 		public void AddCustomSwagger()
 		{
+
 			services.AddOpenApi(opt =>
 			{
 				opt.AddDocumentTransformer(
@@ -86,9 +85,7 @@ public static class HostConfigurationExtensions
 								REST API for PHARMO.
 
 								## Authentication
-								Most endpoints require a Bearer JWT token. Obtain a token via `POST /api/auth/login`, then click **Authorize** and paste:
-
-								`Bearer <your_token>`
+								Most endpoints require a Bearer JWT token. Obtain a token via POST /api/auth/login, then click **Authorize** and paste **only the token** (without Bearer prefix — it is added automatically).
 								""",
 						};
 
@@ -100,10 +97,10 @@ public static class HostConfigurationExtensions
 							Scheme = "bearer",
 							BearerFormat = "JWT",
 							Description = """
-								JWT access token issued by `POST /api/auth/login`.
+								JWT access token issued by POST /api/auth/login.
 
-								Header format:
-								`Authorization: Bearer eyJhbGci...`
+								Enter only the token value (e.g. eyJhbGci...).
+								Swagger UI automatically adds the Authorization: Bearer prefix.
 								""",
 						};
 						document.Components = components;
@@ -111,6 +108,7 @@ public static class HostConfigurationExtensions
 						return Task.CompletedTask;
 					}
 				);
+
 
 				opt.AddOperationTransformer(
 					(operation, context, _) =>
@@ -122,16 +120,16 @@ public static class HostConfigurationExtensions
 
 						if (allowAnonymous)
 						{
-							operation.Security = new List<OpenApiSecurityRequirement>();
+							operation.Security = [];
 							return Task.CompletedTask;
 						}
 
 						if (authorize)
 						{
-							operation.Security = new List<OpenApiSecurityRequirement>
-							{
-								new() { [new OpenApiSecuritySchemeReference("Bearer")] = [], }
-							};
+							operation.Security =
+							[
+								new() { [new OpenApiSecuritySchemeReference("Bearer")] = [] },
+							];
 						}
 
 						operation.Responses.TryAdd(
@@ -192,24 +190,6 @@ public static class HostConfigurationExtensions
 					.AddHttpAuthentication("Bearer", _ => { });
 			});
 
-			app.UseSwaggerUI(options =>
-			{
-				options.RoutePrefix = "swagger";
-				options.SwaggerEndpoint("/openapi/v1.json", "PHARMO API v1");
-				options.DocumentTitle = "PHARMO API - Swagger UI";
-				options.DocExpansion(DocExpansion.List);
-				options.DefaultModelRendering(ModelRendering.Example);
-				options.DefaultModelExpandDepth(3);
-				options.DefaultModelsExpandDepth(1);
-				options.DisplayOperationId();
-				options.DisplayRequestDuration();
-				options.EnableDeepLinking();
-				options.EnableFilter();
-				options.EnablePersistAuthorization();
-				options.EnableTryItOutByDefault();
-				options.ShowCommonExtensions();
-				options.ShowExtensions();
-			});
 		}
 	}
 

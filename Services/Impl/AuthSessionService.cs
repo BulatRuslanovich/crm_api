@@ -21,13 +21,13 @@ public sealed class AuthSessionService(
 	ILogger<AuthSessionService> logger
 ) : IAuthSessionService
 {
+	// WARNING: User should be with policies included
 	public async Task<AuthTokens> IssueAsync(Usr user)
 	{
-		var fullUser = await userRepo.QueryHard().FirstAsync(u => u.UsrId == user.UsrId);
-		var accessToken = GenerateAccessToken(fullUser);
-		var (raw, stored) = GenerateRefreshToken(fullUser.UsrId);
+		var accessToken = GenerateAccessToken(user);
+		var (raw, stored) = GenerateRefreshToken(user.UsrId);
 		await refreshRepo.AddAsync(stored);
-		return new AuthTokens(accessToken, raw, UserResponse.From(fullUser));
+		return new AuthTokens(accessToken, raw, UserResponse.From(user));
 	}
 
 	public async Task<Result<AuthTokens>> RefreshAsync(string refreshToken)
@@ -44,7 +44,7 @@ public sealed class AuthSessionService(
 		if (stored.RefreshExpiresAt < DateTime.UtcNow)
 			return Error.Unauthorized("Refresh token истёк");
 
-		var user = await userRepo.QueryLite().FirstOrDefaultAsync(u => u.UsrId == stored.UsrId);
+		var user = await userRepo.QueryWithPolicies().FirstOrDefaultAsync(u => u.UsrId == stored.UsrId);
 		if (user is null)
 			return Error.Unauthorized("Пользователь не найден или удалён");
 
@@ -54,9 +54,7 @@ public sealed class AuthSessionService(
 	public async Task<Result> LogoutAsync(string refreshToken)
 	{
 		var hash = HashToken(refreshToken);
-		var stored = await refreshRepo.GetByTokenHashAsync(hash);
-		if (stored is not null)
-			await refreshRepo.DeleteAsync(stored);
+		await refreshRepo.DeleteByHashAsync(hash);
 		return Result.Success();
 	}
 

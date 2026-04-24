@@ -106,11 +106,11 @@ public class AuthServiceTests
 	{
 		private readonly List<Usr> _users = users.ToList();
 
-		public IQueryable<Usr> QueryForScope(Scope scope) => QueryHard();
+		public IQueryable<Usr> QueryForScope(Scope scope) => QueryWithPolicies();
 
-		public IQueryable<Usr> QueryHard() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
+		public IQueryable<Usr> QueryWithPolicies() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
 
-		public IQueryable<Usr> QueryLite() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
+		public IQueryable<Usr> QueryForRead() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
 
 		public IQueryable<Usr> QueryForUpdate() => AsAsyncQueryable(_users.Where(u => !u.IsDeleted));
 
@@ -148,9 +148,9 @@ public class AuthServiceTests
 			return Task.FromResult(entity);
 		}
 
-		public Task DeleteAsync(Refresh entity)
+		public Task DeleteByHashAsync(string tokenHash)
 		{
-			_refreshes.Remove(entity);
+			_refreshes.RemoveAll(r => r.RefreshTokenHash == tokenHash);
 			return Task.CompletedTask;
 		}
 

@@ -78,12 +78,12 @@ public class DrugService(AppDbContext db) : IDrugService
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var drug = await db.Drugs.FirstOrDefaultAsync(d => d.DrugId == id && !d.IsDeleted);
-		if (drug is null)
-			return Error.NotFound($"Препарат {id} не найден");
+		var affected = await db.Drugs
+			.Where(a => a.DrugId == id)
+			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
 
-		drug.IsDeleted = true;
-		await db.SaveChangesAsync();
-		return Result.Success();
+		return affected == 0
+			? Error.NotFound($"Препарат {id} не найден")
+			: Result.Success();
 	}
 }

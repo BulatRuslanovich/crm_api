@@ -24,6 +24,9 @@ public class ActivRepository(AppDbContext db) : IActivRepository
 		};
 	}
 
+	public IQueryable<ActivDrug> QueryDrugsForActivs(IReadOnlyList<int> activIds) =>
+		db.ActivDrugs.Where(ad => activIds.Contains(ad.ActivId)).AsNoTracking();
+
 	public async Task<Activ> AddAsync(Activ entity)
 	{
 		db.Activs.Add(entity);

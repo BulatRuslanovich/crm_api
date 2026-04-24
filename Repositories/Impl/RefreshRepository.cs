@@ -13,24 +13,30 @@ public class RefreshRepository(AppDbContext db) : IRefreshRepository
 		return entity;
 	}
 
-	public async Task DeleteAsync(Refresh entity)
+	public async Task DeleteByHashAsync(string tokenHash)
 	{
-		db.Refreshes.Remove(entity);
-		await db.SaveChangesAsync();
+		await db.Refreshes
+			.FromSqlRaw("""
+			                DELETE FROM refresh
+			                WHERE refresh_token_hash = {0}
+			            """, tokenHash).AsNoTracking().ToListAsync();
 	}
 
 	public Task<Refresh?> GetByTokenHashAsync(string tokenHash) =>
 		db.Refreshes.FirstOrDefaultAsync(r => r.RefreshTokenHash == tokenHash);
 
-	public Task<Refresh?> ConsumeByTokenHashAsync(string tokenHash) =>
-		db.Refreshes
+	public async Task<Refresh?> ConsumeByTokenHashAsync(string tokenHash)
+	{
+		var results = await db.Refreshes
 			.FromSqlRaw("""
 			                DELETE FROM refresh
 			                WHERE refresh_token_hash = {0}
 			                RETURNING refresh_id, usr_id, refresh_token_hash, refresh_expires_at
 			            """, tokenHash)
 			.AsNoTracking()
-			.FirstOrDefaultAsync();
+			.ToListAsync();
+		return results.FirstOrDefault();
+	}
 
 	public Task RevokeAllForUserAsync(int usrId) =>
 		db.Refreshes.Where(r => r.UsrId == usrId).ExecuteDeleteAsync();

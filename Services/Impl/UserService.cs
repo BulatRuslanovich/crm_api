@@ -43,7 +43,7 @@ public class UserService(
 
 	public async Task<Result<UserResponse>> GetByIdAsync(int id)
 	{
-		var user = await repo.QueryHard().FirstOrDefaultAsync(u => u.UsrId == id);
+		var user = await repo.QueryWithPolicies().FirstOrDefaultAsync(u => u.UsrId == id);
 		if (user is null)
 			return Error.NotFound($"Пользователь {id} не найден");
 		return UserResponse.From(user);
@@ -82,14 +82,13 @@ public class UserService(
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var user = await repo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrId == id);
-		if (user is null)
-			return Error.NotFound($"Пользователь {id} не найден");
+		var affected = await repo.QueryForUpdate()
+			.Where(a => a.UsrId == id)
+			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
 
-		user.IsDeleted = true;
-		await repo.UpdateAsync(user);
-		await sessionService.RevokeAllForUserAsync(id);
-		return Result.Success();
+		return affected == 0
+			? Error.NotFound($"Пользователь {id} не найден")
+			: Result.Success();
 	}
 
 	public async Task<Result> ChangePasswordAsync(int id, ChangePasswordRequest req)
