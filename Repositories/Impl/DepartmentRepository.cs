@@ -12,9 +12,6 @@ public class DepartmentRepository(AppDbContext db) : IDepartmentRepository
 	public Task<Department?> FindAsync(int id) =>
 		db.Departments.FirstOrDefaultAsync(d => d.DepartmentId == id && !d.IsDeleted);
 
-	public Task<bool> ExistsByNameAsync(string name) =>
-		db.Departments.AnyAsync(d => !d.IsDeleted && d.DepartmentName == name);
-
 	public async Task<Department> AddAsync(Department entity)
 	{
 		db.Departments.Add(entity);

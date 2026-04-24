@@ -66,4 +66,30 @@ public sealed class PhysSpecsControllerContractTests(ApiTestFactory factory)
 		// Assert: successful deletion returns 204.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Contact specialties POST returns 403 for non-admin role")]
+	public async Task CreateSpec_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can create specialties.
+		using var request = AuthorizedRequest(HttpMethod.Post, "/api/physes/specs", RoleNames.Representative);
+
+		// Act: attempt to create a specialty without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Contact specialties DELETE returns 403 for non-admin role")]
+	public async Task DeleteSpec_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can delete specialties.
+		using var request = AuthorizedRequest(HttpMethod.Delete, "/api/physes/specs/1", RoleNames.Representative);
+
+		// Act: attempt to delete a specialty without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
 }

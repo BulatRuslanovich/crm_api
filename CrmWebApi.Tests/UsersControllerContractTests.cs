@@ -172,4 +172,112 @@ public sealed class UsersControllerContractTests(ApiTestFactory factory)
 		// Assert: successful deletion returns 204.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Users GET by id returns 404 for missing item")]
+	public async Task GetById_ReturnsNotFound_WhenUserDoesNotExist()
+	{
+		// Arrange: admin requesting a non-existent user id.
+		using var request = AuthorizedGet("/api/users/999", RoleNames.Admin);
+
+		// Act: call the item endpoint with an unknown id.
+		var response = await Client.SendAsync(request);
+
+		// Assert: missing user maps to 404 ProblemDetails.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Пользователь 999 не найден");
+	}
+
+	[Fact(DisplayName = "Users GET list returns 403 for representative role")]
+	public async Task GetAll_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: representatives are not in the AdminManagerDirector policy.
+		using var request = AuthorizedGet("/api/users", RoleNames.Representative);
+
+		// Act: attempt to list users without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Users GET by id returns 200 when user requests own profile")]
+	public async Task GetById_WithOwnId_AsRepresentative_ReturnsOk()
+	{
+		// Arrange: token userId=1 requesting their own profile at /api/users/1.
+		using var request = AuthorizedGet("/api/users/1", RoleNames.Representative, userId: 1);
+
+		// Act: request own user profile.
+		var response = await Client.SendAsync(request);
+
+		// Assert: own-profile access is permitted regardless of role.
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+	}
+
+	[Fact(DisplayName = "Users GET by id returns 403 when non-admin requests another user")]
+	public async Task GetById_WithOtherId_AsRepresentative_ReturnsForbidden()
+	{
+		// Arrange: token userId=1 requesting another user's profile at /api/users/2.
+		using var request = AuthorizedGet("/api/users/2", RoleNames.Representative, userId: 1);
+
+		// Act: attempt to read another user's profile.
+		var response = await Client.SendAsync(request);
+
+		// Assert: non-admin cross-user access is rejected with 403.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Users PUT returns 200 when user updates own profile")]
+	public async Task Update_WithOwnId_AsRepresentative_ReturnsOk()
+	{
+		// Arrange: token userId=1 updating their own profile at /api/users/1.
+		var body = new { firstName = "Иван" };
+		using var request = AuthorizedJson(HttpMethod.Put, "/api/users/1", RoleNames.Representative, body, userId: 1);
+
+		// Act: update own user profile.
+		var response = await Client.SendAsync(request);
+
+		// Assert: own-profile update is permitted regardless of role.
+		Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+	}
+
+	[Fact(DisplayName = "Users PUT returns 403 when non-admin updates another user")]
+	public async Task Update_WithOtherId_AsRepresentative_ReturnsForbidden()
+	{
+		// Arrange: token userId=1 attempting to update user 2.
+		var body = new { firstName = "Иван" };
+		using var request = AuthorizedJson(HttpMethod.Put, "/api/users/2", RoleNames.Representative, body, userId: 1);
+
+		// Act: attempt to update another user's profile.
+		var response = await Client.SendAsync(request);
+
+		// Assert: non-admin cross-user update is rejected with 403.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Users PATCH password returns 204 when user changes own password")]
+	public async Task ChangePassword_WithOwnId_AsRepresentative_ReturnsNoContent()
+	{
+		// Arrange: token userId=1 changing their own password.
+		var body = new { oldPassword = "old123", newPassword = "newPassword1" };
+		using var request = AuthorizedJson(HttpMethod.Patch, "/api/users/1/password", RoleNames.Representative, body, userId: 1);
+
+		// Act: change own password.
+		var response = await Client.SendAsync(request);
+
+		// Assert: own-password change is permitted regardless of role.
+		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+	}
+
+	[Fact(DisplayName = "Users PATCH password returns 403 when non-admin changes another user's password")]
+	public async Task ChangePassword_WithOtherId_AsRepresentative_ReturnsForbidden()
+	{
+		// Arrange: token userId=1 attempting to change user 2's password.
+		var body = new { oldPassword = "old123", newPassword = "newPassword1" };
+		using var request = AuthorizedJson(HttpMethod.Patch, "/api/users/2/password", RoleNames.Representative, body, userId: 1);
+
+		// Act: attempt to change another user's password.
+		var response = await Client.SendAsync(request);
+
+		// Assert: non-admin cross-user password change is rejected with 403.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
 }

@@ -104,4 +104,56 @@ public sealed class OrgsControllerContractTests(ApiTestFactory factory)
 		// Assert: successful deletion returns 204.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Organizations GET by id returns 404 for missing item")]
+	public async Task GetById_ReturnsNotFound_WhenOrgDoesNotExist()
+	{
+		// Arrange: request a non-existent organization id.
+		using var request = AuthorizedGet("/api/orgs/999", RoleNames.Admin);
+
+		// Act: call the item endpoint with an unknown id.
+		var response = await Client.SendAsync(request);
+
+		// Assert: missing organization maps to 404 ProblemDetails.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Организация 999 не найдена");
+	}
+
+	[Fact(DisplayName = "Organizations POST returns 403 for non-admin role")]
+	public async Task Create_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can create organizations.
+		using var request = AuthorizedRequest(HttpMethod.Post, "/api/orgs", RoleNames.Representative);
+
+		// Act: attempt to create an organization without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Organizations PUT returns 403 for non-admin role")]
+	public async Task Update_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can update organizations.
+		using var request = AuthorizedRequest(HttpMethod.Put, "/api/orgs/1", RoleNames.Representative);
+
+		// Act: attempt to update an organization without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Organizations DELETE returns 403 for non-admin role")]
+	public async Task Delete_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can delete organizations.
+		using var request = AuthorizedRequest(HttpMethod.Delete, "/api/orgs/1", RoleNames.Representative);
+
+		// Act: attempt to delete an organization without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
 }

@@ -56,11 +56,9 @@ public class PhysRepository(AppDbContext db) : IPhysRepository
 
 	public async Task<bool> SoftDeleteSpecAsync(int id)
 	{
-		var spec = await db.Specs.FirstOrDefaultAsync(s => s.SpecId == id);
-		if (spec is null)
-			return false;
-		spec.IsDeleted = true;
-		await db.SaveChangesAsync();
-		return true;
+		var affected = await db.Specs
+			.Where(s => s.SpecId == id && !s.IsDeleted)
+			.ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
+		return affected > 0;
 	}
 }

@@ -118,18 +118,19 @@ public class PhysService(IPhysRepository repo, HybridCache cache)
 
 	public async Task<Result<PhysResponse>> UpdateAsync(int id, UpdatePhysRequest req)
 	{
-		var phys = await repo.QueryLite().FirstOrDefaultAsync(p => p.PhysId == id);
-		if (phys is null)
+		var affected = await repo.QueryLite()
+			.Where(p => p.PhysId == id)
+			.ExecuteUpdateAsync(s => s
+				.SetProperty(p => p.SpecId, p => req.SpecId ?? p.SpecId)
+				.SetProperty(p => p.PhysFirstname, p => req.FirstName ?? p.PhysFirstname)
+				.SetProperty(p => p.PhysLastname, p => req.LastName ?? p.PhysLastname)
+				.SetProperty(p => p.PhysMiddlename, p => req.MiddleName ?? p.PhysMiddlename)
+				.SetProperty(p => p.PhysPhone, p => req.Phone ?? p.PhysPhone)
+				.SetProperty(p => p.PhysEmail, p => req.Email ?? p.PhysEmail));
+
+		if (affected == 0)
 			return Error.NotFound($"Физическое лицо {id} не найдено");
 
-		phys.SpecId = req.SpecId ?? phys.SpecId;
-		phys.PhysFirstname = req.FirstName ?? phys.PhysFirstname;
-		phys.PhysLastname = req.LastName ?? phys.PhysLastname;
-		phys.PhysMiddlename = req.MiddleName ?? phys.PhysMiddlename;
-		phys.PhysPhone = req.Phone ?? phys.PhysPhone;
-		phys.PhysEmail = req.Email ?? phys.PhysEmail;
-
-		await repo.UpdateAsync(phys);
 		return await GetByIdAsync(id);
 	}
 

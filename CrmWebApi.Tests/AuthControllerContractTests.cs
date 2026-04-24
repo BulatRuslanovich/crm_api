@@ -142,4 +142,17 @@ public sealed class AuthControllerContractTests(ApiTestFactory factory)
 		// Assert: logout completes successfully and clears the cookie.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Auth confirm-email returns 400 for invalid OTP code")]
+	public async Task ConfirmEmail_InvalidCode_ReturnsBadRequest()
+	{
+		// Arrange: the fake auth service always rejects confirm-email with a validation error.
+		var body = new { email = "test@example.com", code = "000000" };
+
+		// Act: submit the confirmation request.
+		var response = await Client.PostAsJsonAsync("/api/auth/confirm-email", body);
+
+		// Assert: invalid code is returned as a 400 ProblemDetails.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.BadRequest, "Неверный или истёкший код");
+	}
 }

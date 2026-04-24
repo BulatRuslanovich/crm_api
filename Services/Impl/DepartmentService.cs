@@ -51,12 +51,10 @@ public class DepartmentService(IDepartmentRepository repo)
 
 	public async Task<Result<DepartmentResponse>> CreateAsync(CreateDepartmentRequest req)
 	{
-		if (await repo.ExistsByNameAsync(req.DepartmentName))
-			return Error.Conflict("Департамент с таким названием уже существует");
-
 		var entity = new Department { DepartmentName = req.DepartmentName };
-		await repo.AddAsync(entity);
-		return await GetByIdAsync(entity.DepartmentId);
+		var added = await repo.AddAsync(entity);
+	
+		return new DepartmentResponse(added.DepartmentId, added.DepartmentName, 0);
 	}
 
 	public async Task<Result> DeleteAsync(int id)
@@ -72,26 +70,12 @@ public class DepartmentService(IDepartmentRepository repo)
 
 	public async Task<Result> AddUserAsync(int departmentId, int usrId)
 	{
-		var department = await repo.FindAsync(departmentId);
-		if (department is null)
-			return Error.NotFound($"Департамент {departmentId} не найден");
-
-		if (!await repo.UserExistsAsync(usrId))
-			return Error.NotFound($"Пользователь {usrId} не найден");
-
-		if (await repo.IsUserLinkedAsync(departmentId, usrId))
-			return Error.Conflict("Пользователь уже в этом департаменте");
-
 		await repo.LinkUserAsync(departmentId, usrId);
 		return Result.Success();
 	}
 
 	public async Task<Result> RemoveUserAsync(int departmentId, int usrId)
 	{
-		var department = await repo.FindAsync(departmentId);
-		if (department is null)
-			return Error.NotFound($"Департамент {departmentId} не найден");
-
 		var removed = await repo.UnlinkUserAsync(departmentId, usrId);
 		if (!removed)
 			return Error.NotFound("Пользователь не состоит в этом департаменте");

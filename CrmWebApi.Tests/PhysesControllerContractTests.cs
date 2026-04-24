@@ -110,4 +110,82 @@ public sealed class PhysesControllerContractTests(ApiTestFactory factory)
 		// Assert: successful deletion returns 204.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Contacts GET by id returns 404 for missing item")]
+	public async Task GetById_ReturnsNotFound_WhenPhysDoesNotExist()
+	{
+		// Arrange: request a non-existent contact id.
+		using var request = AuthorizedGet("/api/physes/999", RoleNames.Admin);
+
+		// Act: call the item endpoint with an unknown id.
+		var response = await Client.SendAsync(request);
+
+		// Assert: missing contact maps to 404 ProblemDetails.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Физическое лицо 999 не найдено");
+	}
+
+	[Fact(DisplayName = "Contacts POST returns 403 for non-admin role")]
+	public async Task Create_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can create contacts.
+		using var request = AuthorizedRequest(HttpMethod.Post, "/api/physes", RoleNames.Representative);
+
+		// Act: attempt to create a contact without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Contacts PUT returns 403 for non-admin role")]
+	public async Task Update_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can update contacts.
+		using var request = AuthorizedRequest(HttpMethod.Put, "/api/physes/1", RoleNames.Representative);
+
+		// Act: attempt to update a contact without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Contacts DELETE returns 403 for non-admin role")]
+	public async Task Delete_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can delete contacts.
+		using var request = AuthorizedRequest(HttpMethod.Delete, "/api/physes/1", RoleNames.Representative);
+
+		// Act: attempt to delete a contact without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Contacts POST organization link returns 403 for non-admin role")]
+	public async Task LinkOrg_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can link contacts to organizations.
+		using var request = AuthorizedRequest(HttpMethod.Post, "/api/physes/1/orgs/1", RoleNames.Representative);
+
+		// Act: attempt to link without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Contacts DELETE organization link returns 403 for non-admin role")]
+	public async Task UnlinkOrg_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can unlink contacts from organizations.
+		using var request = AuthorizedRequest(HttpMethod.Delete, "/api/physes/1/orgs/1", RoleNames.Representative);
+
+		// Act: attempt to unlink without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
 }

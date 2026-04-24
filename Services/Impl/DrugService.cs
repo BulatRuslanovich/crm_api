@@ -29,12 +29,12 @@ public class DrugService(AppDbContext db) : IDrugService
 		}
 
 		var total = includeTotal ? await query.CountAsync() : 0;
-		var entities = await query
+		var items = await query
 			.OrderBy(d => d.DrugId)
 			.Skip((page - 1) * pageSize)
 			.Take(pageSize)
+			.Select(d => new DrugResponse(d.DrugId, d.DrugName, d.DrugBrand, d.DrugForm))
 			.ToListAsync();
-		var items = entities.Select(DrugResponse.From).ToList();
 		return new PagedResponse<DrugResponse>(items, page, pageSize, total);
 	}
 

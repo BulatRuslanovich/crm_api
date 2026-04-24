@@ -13,14 +13,8 @@ public class RefreshRepository(AppDbContext db) : IRefreshRepository
 		return entity;
 	}
 
-	public async Task DeleteByHashAsync(string tokenHash)
-	{
-		await db.Refreshes
-			.FromSqlRaw("""
-			                DELETE FROM refresh
-			                WHERE refresh_token_hash = {0}
-			            """, tokenHash).AsNoTracking().ToListAsync();
-	}
+	public Task DeleteByHashAsync(string tokenHash) =>
+		db.Refreshes.Where(r => r.RefreshTokenHash == tokenHash).ExecuteDeleteAsync();
 
 	public Task<Refresh?> GetByTokenHashAsync(string tokenHash) =>
 		db.Refreshes.FirstOrDefaultAsync(r => r.RefreshTokenHash == tokenHash);

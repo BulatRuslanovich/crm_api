@@ -167,6 +167,9 @@ public class ActivService(IActivRepository repo) : IActivService
 			})
 			.FirstOrDefaultAsync();
 
+		if (entity is null)
+			return Error.NotFound($"Активность {id} не найдена");
+		
 		var drugs = await repo.QueryDrugsForActivs([id])
 			.Select(ad => new
 			{
@@ -175,9 +178,6 @@ public class ActivService(IActivRepository repo) : IActivService
 			})
 			.ToListAsync();
 		var drugMap = drugs.ToLookup(x => x.ActivId, x => x.Drug);
-
-		if (entity is null)
-			return Error.NotFound($"Активность {id} не найдена");
 
 		return new ActivResponse(
 			entity.ActivId, entity.UsrId, entity.UsrLogin,
@@ -202,7 +202,9 @@ public class ActivService(IActivRepository repo) : IActivService
 			ActivDescription = req.Description,
 		};
 
-		return await GetByIdAsync(activ.ActivId, Scope.ForAll(usrId));
+		var added = await repo.AddAsync(activ);
+
+		return await GetByIdAsync(added.ActivId, Scope.ForAll(usrId));
 	}
 
 	public async Task<Result<ActivResponse>> UpdateAsync(

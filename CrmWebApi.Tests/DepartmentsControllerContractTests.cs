@@ -110,4 +110,69 @@ public sealed class DepartmentsControllerContractTests(ApiTestFactory factory)
 		// Assert: successful deletion returns 204.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Departments GET by id returns 404 for missing item")]
+	public async Task GetById_ReturnsNotFound_WhenDepartmentDoesNotExist()
+	{
+		// Arrange: request a non-existent department id.
+		using var request = AuthorizedGet("/api/departments/999", RoleNames.Admin);
+
+		// Act: call the item endpoint with an unknown id.
+		var response = await Client.SendAsync(request);
+
+		// Assert: missing department maps to 404 ProblemDetails.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Отдел 999 не найден");
+	}
+
+	[Fact(DisplayName = "Departments POST returns 403 for non-admin role")]
+	public async Task Create_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: representatives are not allowed to create departments.
+		using var request = AuthorizedRequest(HttpMethod.Post, "/api/departments", RoleNames.Representative);
+
+		// Act: attempt to create a department without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Departments DELETE returns 403 for non-admin role")]
+	public async Task Delete_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: representatives are not allowed to delete departments.
+		using var request = AuthorizedRequest(HttpMethod.Delete, "/api/departments/1", RoleNames.Representative);
+
+		// Act: attempt to delete a department without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Departments POST user membership returns 403 for non-admin role")]
+	public async Task AddUser_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can add users to departments.
+		using var request = AuthorizedRequest(HttpMethod.Post, "/api/departments/1/users/1", RoleNames.Representative);
+
+		// Act: attempt to add a user without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Departments DELETE user membership returns 403 for non-admin role")]
+	public async Task RemoveUser_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can remove users from departments.
+		using var request = AuthorizedRequest(HttpMethod.Delete, "/api/departments/1/users/1", RoleNames.Representative);
+
+		// Act: attempt to remove a user without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
 }

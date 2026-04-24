@@ -62,18 +62,10 @@ public class UserRepository(AppDbContext db) : IUserRepository
 		await db.SaveChangesAsync();
 	}
 
-	public async Task LinkPolicyAsync(int userId, int policyId)
-	{
-		var exists = await db.UsrPolicies.AnyAsync(up =>
-			up.UsrId == userId && up.PolicyId == policyId
+	public Task LinkPolicyAsync(int userId, int policyId) =>
+		db.Database.ExecuteSqlInterpolatedAsync(
+			$"INSERT INTO usr_policy (usr_id, policy_id) VALUES ({userId}, {policyId}) ON CONFLICT DO NOTHING"
 		);
-
-		if (!exists)
-		{
-			db.UsrPolicies.Add(new UsrPolicy { UsrId = userId, PolicyId = policyId });
-			await db.SaveChangesAsync();
-		}
-	}
 
 	public async Task UnlinkPolicyAsync(int userId, int policyId) =>
 		await db

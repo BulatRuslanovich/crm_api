@@ -83,4 +83,56 @@ public sealed class DrugsControllerContractTests(ApiTestFactory factory)
 		// Assert: successful deletion has no response body.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Drugs GET by id returns 404 for missing item")]
+	public async Task GetById_ReturnsNotFound_WhenDrugDoesNotExist()
+	{
+		// Arrange: request a non-existent drug id.
+		using var request = AuthorizedGet("/api/drugs/999", RoleNames.Admin);
+
+		// Act: call the item endpoint with an unknown id.
+		var response = await Client.SendAsync(request);
+
+		// Assert: missing drug maps to 404 ProblemDetails.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Препарат 999 не найден");
+	}
+
+	[Fact(DisplayName = "Drugs POST returns 403 for non-admin role")]
+	public async Task Create_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can create drugs.
+		using var request = AuthorizedRequest(HttpMethod.Post, "/api/drugs", RoleNames.Representative);
+
+		// Act: attempt to create a drug without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Drugs PUT returns 403 for non-admin role")]
+	public async Task Update_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can update drugs.
+		using var request = AuthorizedRequest(HttpMethod.Put, "/api/drugs/1", RoleNames.Representative);
+
+		// Act: attempt to update a drug without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
+
+	[Fact(DisplayName = "Drugs DELETE returns 403 for non-admin role")]
+	public async Task Delete_WithRepresentativeToken_ReturnsForbidden()
+	{
+		// Arrange: only admins can delete drugs.
+		using var request = AuthorizedRequest(HttpMethod.Delete, "/api/drugs/1", RoleNames.Representative);
+
+		// Act: attempt to delete a drug without the required role.
+		var response = await Client.SendAsync(request);
+
+		// Assert: role failure uses the shared 403 ProblemDetails contract.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.Forbidden, "Доступ запрещён");
+	}
 }

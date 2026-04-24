@@ -93,18 +93,19 @@ public class OrgService(IOrgRepository repo, HybridCache cache)
 
 	public async Task<Result<OrgResponse>> UpdateAsync(int id, UpdateOrgRequest req)
 	{
-		var org = await repo.QueryLite().FirstOrDefaultAsync(o => o.OrgId == id);
-		if (org is null)
+		var affected = await repo.QueryLite()
+			.Where(o => o.OrgId == id)
+			.ExecuteUpdateAsync(s => s
+				.SetProperty(o => o.OrgTypeId, o => req.OrgTypeId ?? o.OrgTypeId)
+				.SetProperty(o => o.OrgName, o => req.OrgName ?? o.OrgName)
+				.SetProperty(o => o.OrgInn, o => req.Inn ?? o.OrgInn)
+				.SetProperty(o => o.OrgLatitude, o => req.Latitude ?? o.OrgLatitude)
+				.SetProperty(o => o.OrgLongitude, o => req.Longitude ?? o.OrgLongitude)
+				.SetProperty(o => o.OrgAddress, o => req.Address ?? o.OrgAddress));
+
+		if (affected == 0)
 			return Error.NotFound($"Организация {id} не найдена");
 
-		org.OrgTypeId = req.OrgTypeId ?? org.OrgTypeId;
-		org.OrgName = req.OrgName ?? org.OrgName;
-		org.OrgInn = req.Inn ?? org.OrgInn;
-		org.OrgLatitude = req.Latitude ?? org.OrgLatitude;
-		org.OrgLongitude = req.Longitude ?? org.OrgLongitude;
-		org.OrgAddress = req.Address ?? org.OrgAddress;
-
-		await repo.UpdateAsync(org);
 		return await GetByIdAsync(id);
 	}
 

@@ -31,12 +31,19 @@ public class UserService(
 	{
 		var query = repo.QueryForScope(scope);
 		var total = includeTotal ? await query.CountAsync() : 0;
-		var entities = await query
+		var responses = await query
 			.OrderBy(u => u.UsrId)
 			.Skip((page - 1) * pageSize)
 			.Take(pageSize)
+			.Select(u => new UserResponse(
+				u.UsrId,
+				u.UsrFirstname,
+				u.UsrLastname,
+				u.UsrEmail,
+				u.UsrLogin,
+				u.UsrPolicies.Select(p => p.Policy.PolicyName).ToList()
+			))
 			.ToListAsync();
-		var responses = entities.Select(UserResponse.From).ToList();
 
 		return new PagedResponse<UserResponse>(responses, page, pageSize, total);
 	}
@@ -69,14 +76,15 @@ public class UserService(
 
 	public async Task<Result<UserResponse>> UpdateAsync(int id, UpdateUserRequest req)
 	{
-		var user = await repo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrId == id);
-		if (user is null)
+		var affected = await repo.QueryForUpdate()
+			.Where(u => u.UsrId == id)
+			.ExecuteUpdateAsync(s => s
+				.SetProperty(u => u.UsrFirstname, u => req.FirstName ?? u.UsrFirstname)
+				.SetProperty(u => u.UsrLastname, u => req.LastName ?? u.UsrLastname));
+
+		if (affected == 0)
 			return Error.NotFound($"Пользователь {id} не найден");
 
-		user.UsrFirstname = req.FirstName ?? user.UsrFirstname;
-		user.UsrLastname = req.LastName ?? user.UsrLastname;
-
-		await repo.UpdateAsync(user);
 		return await GetByIdAsync(id);
 	}
 

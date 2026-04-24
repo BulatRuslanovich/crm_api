@@ -138,4 +138,17 @@ public sealed class ActivsControllerContractTests(ApiTestFactory factory)
 		// Assert: successful deletion returns 204.
 		Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 	}
+
+	[Fact(DisplayName = "Activities GET by id returns 404 for missing item")]
+	public async Task GetById_ReturnsNotFound_WhenActivDoesNotExist()
+	{
+		// Arrange: request a non-existent activity id.
+		using var request = AuthorizedGet("/api/activs/999", RoleNames.Representative);
+
+		// Act: call the item endpoint with an unknown id.
+		var response = await Client.SendAsync(request);
+
+		// Assert: missing activity maps to 404 ProblemDetails.
+		await AssertProblemDetailsAsync(response, HttpStatusCode.NotFound, "Активность 999 не найдена");
+	}
 }

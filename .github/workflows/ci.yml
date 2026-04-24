@@ -26,7 +26,7 @@ permissions:
 
 jobs:
     build-test:
-        name: Build, Test, Audit (.NET 10)
+        name: Build, Test, Audit
         runs-on: ubuntu-latest
         timeout-minutes: 15
 
