@@ -9,7 +9,7 @@ builder.Services.AddApiCaching(builder.Configuration);
 builder.Services.AddApiControllers();
 builder.Services.AddServices();
 builder.Services.AddApiOptions(builder.Configuration);
-builder.Services.AddApiOpenApi();
+builder.Services.AddCustomSwagger();
 builder.Services.AddDatabase(builder.Configuration);
 
 builder

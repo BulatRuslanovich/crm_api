@@ -1,7 +1,5 @@
 using System.IO.Compression;
 using System.Net;
-using System.Text;
-using System.Text.RegularExpressions;
 using CrmWebApi.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -10,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Events;
 using Serilog.Templates;
 using Serilog.Templates.Themes;
 using Swashbuckle.AspNetCore.SwaggerUI;
@@ -18,62 +17,60 @@ namespace CrmWebApi.Extensions;
 
 public static class HostConfigurationExtensions
 {
-	public static void UseApiSerilog(this ConfigureHostBuilder host)
+	private const string ConsoleTemplate =
+		"[{@t:HH:mm:ss} {@l:u3}] {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1), '<no source>')} → {@m}\n{@x}";
+
+	private static readonly Dictionary<string, LogEventLevel> Overrides = new()
 	{
-		host.UseSerilog(
+		["Microsoft.AspNetCore.Hosting"] = LogEventLevel.Warning,
+		["Microsoft.AspNetCore.Routing"] = LogEventLevel.Warning,
+		["Microsoft.AspNetCore.Diagnostics"] = LogEventLevel.Warning,
+		["Microsoft.AspNetCore.Authorization"] = LogEventLevel.Warning,
+		["Microsoft.AspNetCore.Authentication"] = LogEventLevel.Warning,
+		["Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor"] = LogEventLevel.Warning,
+		["Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker"] = LogEventLevel.Warning,
+		// Раскомментируй, когда созреешь:
+		// ["Microsoft.EntityFrameworkCore.Database.Command"] = LogEventLevel.Warning,
+	};
+
+
+	public static void UseApiSerilog(this ConfigureHostBuilder builder)
+	{
+		builder.UseSerilog(
 			(context, config) =>
 			{
-				config
-					.WriteTo.Console(
-						new ExpressionTemplate(
-							"[{@t:HH:mm:ss} {@l:u3}] {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1), '<no source>')} → {@m}\n{@x}",
-							theme: context.HostingEnvironment.IsProduction()
-								? null
-								: TemplateTheme.Code
-						)
-					)
-					.MinimumLevel.Information()
-					.MinimumLevel.Override(
-						"Microsoft.AspNetCore.Hosting",
-						Serilog.Events.LogEventLevel.Warning
-					)
-					.MinimumLevel.Override(
-						"Microsoft.AspNetCore.Routing",
-						Serilog.Events.LogEventLevel.Warning
-					)
-					.MinimumLevel.Override(
-						"Microsoft.AspNetCore.Diagnostics",
-						Serilog.Events.LogEventLevel.Warning
-					)
-					.MinimumLevel.Override(
-						"Microsoft.AspNetCore.Authorization",
-						Serilog.Events.LogEventLevel.Warning
-					)
-					.MinimumLevel.Override(
-						"Microsoft.AspNetCore.Authentication",
-						Serilog.Events.LogEventLevel.Warning
-					)
-					.MinimumLevel.Override(
-						"Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor",
-						Serilog.Events.LogEventLevel.Warning
-					)
-					// .MinimumLevel.Override("Microsoft.AspNetCore.Cors", Serilog.Events.LogEventLevel.Warning)
-					.MinimumLevel.Override("Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker", Serilog.Events.LogEventLevel.Warning)
-					// .MinimumLevel.Override(
-					// 	"Microsoft.EntityFrameworkCore.Database.Command",
-					// 	Serilog.Events.LogEventLevel.Warning
-					// )
-					;
+				var isProduction = context.HostingEnvironment.IsProduction();
 
-				if (!context.HostingEnvironment.IsProduction())
+				config
+					.WriteTo.Console(CreateConsoleTemplate(isProduction))
+					.MinimumLevel.Information()
+					.ApplyOverrides();
+
+				if (!isProduction)
 					config.WriteTo.Debug();
 			}
 		);
 	}
 
+	private static ExpressionTemplate CreateConsoleTemplate(bool isProduction)
+	{
+		return new ExpressionTemplate(
+			ConsoleTemplate,
+			theme: isProduction ? null : TemplateTheme.Code
+		);
+	}
+
+	private static void ApplyOverrides(this LoggerConfiguration config)
+	{
+		foreach (var (source, level) in Overrides)
+		{
+			config.MinimumLevel.Override(source, level);
+		}
+	}
+
 	extension(IServiceCollection services)
 	{
-		public void AddApiOpenApi()
+		public void AddCustomSwagger()
 		{
 			services.AddOpenApi(opt =>
 			{
@@ -82,43 +79,17 @@ public static class HostConfigurationExtensions
 					{
 						document.Info = new OpenApiInfo
 						{
-							Title = "PHARMO CRM API",
+							Title = "PHARMO API",
 							Version = "v1",
 							Description = """
 								## Overview
-								REST API for PHARMO CRM.
+								REST API for PHARMO.
 
 								## Authentication
 								Most endpoints require a Bearer JWT token. Obtain a token via `POST /api/auth/login`, then click **Authorize** and paste:
 
 								`Bearer <your_token>`
-
-								## Rate Limiting
-								Auth endpoints are limited more aggressively than the rest of the API. When a limit is exceeded, the API returns `429 Too Many Requests`.
-
-								## Local Development
-								The default local API URL is `http://localhost:5000`.
 								""",
-						};
-
-						document.Servers =
-						[
-							new OpenApiServer
-							{
-								Url = "http://localhost:5000",
-								Description = "Local development",
-							},
-						];
-
-						document.Tags = new HashSet<OpenApiTag>
-						{
-							new() { Name = "Auth", Description = "Registration, login, email confirmation, password reset, refresh and logout." },
-							new() { Name = "Users", Description = "User accounts, current profile and access policies." },
-							new() { Name = "Departments", Description = "Departments and department membership." },
-							new() { Name = "Orgs", Description = "Organizations and organization types." },
-							new() { Name = "Physes", Description = "Contacts, specializations and organization links." },
-							new() { Name = "Drugs", Description = "Drug catalog management." },
-							new() { Name = "Activs", Description = "CRM activities and linked drugs." },
 						};
 
 						var components = document.Components ?? new OpenApiComponents();
@@ -137,14 +108,6 @@ public static class HostConfigurationExtensions
 						};
 						document.Components = components;
 
-						document.Security =
-						[
-							new OpenApiSecurityRequirement
-							{
-								[new OpenApiSecuritySchemeReference("Bearer")] = [],
-							}
-						];
-
 						return Task.CompletedTask;
 					}
 				);
@@ -157,39 +120,34 @@ public static class HostConfigurationExtensions
 						var authorize = metadata.OfType<IAuthorizeData>().Any();
 						operation.Responses ??= [];
 
-						if (!allowAnonymous && authorize)
+						if (allowAnonymous)
 						{
-							operation.Responses.TryAdd(
-								"401",
-								new OpenApiResponse
-								{
-									Description = "Unauthorized: missing, expired or invalid JWT token.",
-								}
-							);
-							operation.Responses.TryAdd(
-								"403",
-								new OpenApiResponse
-								{
-									Description = "Forbidden: authenticated user does not have the required role or policy.",
-								}
-							);
+							operation.Security = new List<OpenApiSecurityRequirement>();
+							return Task.CompletedTask;
+						}
+
+						if (authorize)
+						{
+							operation.Security = new List<OpenApiSecurityRequirement>
+							{
+								new() { [new OpenApiSecuritySchemeReference("Bearer")] = [], }
+							};
 						}
 
 						operation.Responses.TryAdd(
-							"429",
+							"401",
 							new OpenApiResponse
 							{
-								Description = "Too Many Requests: rate limit exceeded.",
+								Description = "Unauthorized: missing, expired or invalid JWT token.",
 							}
 						);
-
-						var sortedResponses = operation.Responses
-							.OrderBy(response => response.Key, StringComparer.Ordinal)
-							.ToArray();
-
-						operation.Responses.Clear();
-						foreach (var (statusCode, response) in sortedResponses)
-							operation.Responses.Add(statusCode, response);
+						operation.Responses.TryAdd(
+							"403",
+							new OpenApiResponse
+							{
+								Description = "Forbidden: authenticated user does not have the required role or policy.",
+							}
+						);
 
 						return Task.CompletedTask;
 					}
@@ -314,39 +272,6 @@ public static class HostConfigurationExtensions
 			);
 		}
 
-		private static bool ShouldLogBody(HttpRequest request) =>
-			request.ContentLength is > 0 and < 50_000 &&
-			request.Method is "POST" or "PUT" or "PATCH" &&
-			request.ContentType?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true;
-
-
-		private static async Task<string> ReadStreamAsync(Stream stream, int maxSizeBytes)
-		{
-			using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
-			var buffer = new char[maxSizeBytes];
-			var read = await reader.ReadAsync(buffer, 0, maxSizeBytes);
-			return new string(buffer, 0, read).Trim();
-		}
-
-		private static string SanitizeSensitiveData(string json)
-		{
-			if (string.IsNullOrWhiteSpace(json)) return json;
-
-			var sensitiveFields = new[] {
-				"password", "secret", "token", "accessToken", "refreshToken",
-				"apiKey", "creditCard", "ssn", "passport"
-			};
-
-			var result = json;
-			foreach (var field in sensitiveFields)
-			{
-				var regex = new Regex($"\"{field}\"\\s*:\\s*\"[^\"]*\"", RegexOptions.IgnoreCase);
-				result = regex.Replace(result, $"\"{field}\":\"***\"");
-			}
-
-			return result;
-		}
-
 		public void UseApiRequestLogging()
 		{
 			app.UseSerilogRequestLogging(opt =>
@@ -361,17 +286,14 @@ public static class HostConfigurationExtensions
 					);
 				};
 
-				opt.GetLevel = (httpContext, elapsed, _) =>
+				opt.GetLevel = (httpContext, _, _) =>
 					httpContext.Request.Path.StartsWithSegments("/health")
 					|| httpContext.Request.Path.StartsWithSegments("/metrics")
-						? Serilog.Events.LogEventLevel.Verbose
+						? LogEventLevel.Verbose
 						: httpContext.Response.StatusCode >= 400
-							? Serilog.Events.LogEventLevel.Warning
-							: Serilog.Events.LogEventLevel.Information;
-
+							? LogEventLevel.Warning
+							: LogEventLevel.Information;
 			});
-
-
 		}
 	}
 }
