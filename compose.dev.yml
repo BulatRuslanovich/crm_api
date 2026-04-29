@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: crm_db
       POSTGRES_USER: crm_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_me_dev_password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-12345678lol}
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
       - ./sql-scripts:/docker-entrypoint-initdb.d:ro

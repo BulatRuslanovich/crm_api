@@ -145,7 +145,7 @@ CREATE TABLE refresh (
     refresh_id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usr_id             INT NOT NULL REFERENCES usr (usr_id) ON DELETE CASCADE,
     refresh_token_hash VARCHAR(255) NOT NULL UNIQUE,
-    refresh_expires_at TIMESTAMPTZ NOT NULL,
+    refresh_expires_at TIMESTAMPTZ NOT NULL
 );
 
 
@@ -221,4 +221,9 @@ CREATE UNIQUE INDEX phys_usr_email_active
 ON phys(LOWER(phys_email))
 WHERE is_deleted = FALSE;
 
+-- TODO: это временно 
+INSERT INTO usr (usr_firstname, usr_lastname, usr_email, usr_login, usr_password_hash, is_email_confirmed) VALUES
+    ('Bulat', 'Bikmukhametov', 'admin@crm.com', 'admin', '$2a$11$glMVgIr1zF2pjZij0AeecuMsmhVf/Xf/9xPNc6S4u.zhIt17HjxIS', true);
 
+INSERT INTO usr_policy (usr_id, policy_id) VALUES
+    (1, 1); 

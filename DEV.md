@@ -19,7 +19,6 @@
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) (SDK версии ≥ 10.0.100)
 - [Docker](https://docs.docker.com/get-docker/) — для PostgreSQL; Redis поднимается production compose
-- (опционально) [Python](https://https://www.python.org/) — для mock-данных
 
 Проверить SDK:
 
@@ -56,7 +55,7 @@ docker compose -f compose.dev.yml up -d
 | Port | `5432` |
 | Database | `crm_db` |
 | User | `crm_user` |
-| Password | `${DB_PASSWORD:-change_me_dev_password}` |
+| Password | `${DB_PASSWORD:-12345678lol}` |
 
 SQL-скрипты из папки [`sql-scripts/`](sql-scripts/) автоматически применяются при первом запуске контейнера.
 
@@ -69,17 +68,6 @@ Production compose дополнительно поднимает Redis и пер
 docker compose -f compose.dev.yml down -v
 docker compose -f compose.dev.yml up -d
 ```
-
-**Генерация mock данных**:
-
-```bash
-python -n venv venv
-source .venv/bin/activate.fish # скрипт зависит от оболочки или ос
-pip install faker psycopg2-binary
-python generate-fake-date.py
-```
-
----
 
 ## 3. Настроить секреты
 
