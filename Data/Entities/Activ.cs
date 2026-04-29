@@ -31,6 +31,12 @@ public class Activ
 	[MaxLength(500)]
 	public string ActivDescription { get; set; } = string.Empty;
 
+	[Column("activ_latitude")]
+	public double? ActivLatitude { get; set; }
+
+	[Column("activ_longitude")]
+	public double? ActivLongitude { get; set; }
+
 	[Column("is_deleted")]
 	public bool IsDeleted { get; set; }
 

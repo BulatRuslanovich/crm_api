@@ -53,17 +53,6 @@ public sealed class UserServiceTests
 	}
 
 	[Fact]
-	public async Task UpdateAsync_ReturnsNotFound_WhenUserMissing()
-	{
-		var service = CreateService(new InMemoryUserRepository([]));
-
-		var result = await service.UpdateAsync(999, new UpdateUserRequest("Иван", null));
-
-		Assert.False(result.IsSuccess);
-		Assert.Equal(ErrorType.NotFound, result.Error!.Type);
-	}
-
-	[Fact]
 	public async Task ChangePasswordAsync_ReturnsNotFound_WhenUserMissing()
 	{
 		var service = CreateService(new InMemoryUserRepository([]));

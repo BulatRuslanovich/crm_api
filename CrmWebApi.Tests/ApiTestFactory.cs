@@ -287,6 +287,8 @@ public class ApiTestFactory : WebApplicationFactory<Program>
 				DateTimeOffset.UtcNow,
 				DateTimeOffset.UtcNow.AddHours(1),
 				"Визит",
+				null,
+				null,
 				[]
 			),
 		];

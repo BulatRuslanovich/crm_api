@@ -72,8 +72,6 @@ docker compose -f compose.app.yml -f compose.obs.yml up -d
 docker compose -f compose.dev.yml up -d
 ```
 
-`docker-compose.yml` и `docker-compose.dev.yml` оставлены как совместимые entrypoints через `include`.
-
 ## Tests
 
 Тестовый проект подключён к solution: `CrmWebApi.Tests/CrmWebApi.Tests.csproj`.

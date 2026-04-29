@@ -8,7 +8,7 @@ public record OrgResponse(
 	string OrgTypeName,
 	string OrgName,
 	string Inn,
-	double Latitude,
-	double Longitude,
+	double? Latitude,
+	double? Longitude,
 	string Address
 );

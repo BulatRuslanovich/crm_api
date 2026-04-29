@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Activ;
+using CrmWebApi.DTOs.Audit;
 using CrmWebApi.DTOs.Auth;
 using CrmWebApi.DTOs.Department;
 using CrmWebApi.DTOs.Drug;
@@ -23,6 +24,8 @@ namespace CrmWebApi;
 [JsonSerializable(typeof(PagedResponse<ActivResponse>))]
 [JsonSerializable(typeof(PagedResponse<DrugResponse>))]
 [JsonSerializable(typeof(PagedResponse<DepartmentResponse>))]
+[JsonSerializable(typeof(PagedResponse<AuditLogResponse>))]
+[JsonSerializable(typeof(AuditLogResponse))]
 [JsonSerializable(typeof(DepartmentResponse))]
 [JsonSerializable(typeof(UserResponse))]
 [JsonSerializable(typeof(OrgResponse))]

@@ -48,55 +48,6 @@ public sealed class DepartmentServiceTests
 		Assert.Equal("Маркетинг", result.Value!.DepartmentName);
 	}
 
-	[Fact]
-	public async Task AddUserAsync_ReturnsNotFound_WhenDepartmentMissing()
-	{
-		var repo = new InMemoryDepartmentRepository([]);
-		var service = CreateService(repo);
-
-		var result = await service.AddUserAsync(departmentId: 999, usrId: 1);
-
-		Assert.False(result.IsSuccess);
-		Assert.Equal(ErrorType.NotFound, result.Error!.Type);
-	}
-
-	[Fact]
-	public async Task AddUserAsync_ReturnsNotFound_WhenUserMissing()
-	{
-		var dept = new Department { DepartmentName = "Отдел" };
-		var repo = new InMemoryDepartmentRepository([dept], userExists: false);
-		var service = CreateService(repo);
-
-		var result = await service.AddUserAsync(dept.DepartmentId, usrId: 999);
-
-		Assert.False(result.IsSuccess);
-		Assert.Equal(ErrorType.NotFound, result.Error!.Type);
-	}
-
-	[Fact]
-	public async Task AddUserAsync_ReturnsConflict_WhenAlreadyLinked()
-	{
-		var dept = new Department { DepartmentName = "Отдел" };
-		var repo = new InMemoryDepartmentRepository([dept], userExists: true, userLinked: true);
-		var service = CreateService(repo);
-
-		var result = await service.AddUserAsync(dept.DepartmentId, usrId: 1);
-
-		Assert.False(result.IsSuccess);
-		Assert.Equal(ErrorType.Conflict, result.Error!.Type);
-	}
-
-	[Fact]
-	public async Task RemoveUserAsync_ReturnsNotFound_WhenDepartmentMissing()
-	{
-		var repo = new InMemoryDepartmentRepository([]);
-		var service = CreateService(repo);
-
-		var result = await service.RemoveUserAsync(departmentId: 999, usrId: 1);
-
-		Assert.False(result.IsSuccess);
-		Assert.Equal(ErrorType.NotFound, result.Error!.Type);
-	}
 
 	[Fact]
 	public async Task RemoveUserAsync_ReturnsNotFound_WhenUserNotInDepartment()

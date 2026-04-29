@@ -11,9 +11,6 @@ public class UsrDepartment
 	[Column("department_id")]
 	public int DepartmentId { get; init; }
 
-	[Column("created_at")]
-	public DateTimeOffset CreatedAt { get; init; }
-
 	public Usr Usr { get; init; } = null!;
 	public Department Department { get; init; } = null!;
 }

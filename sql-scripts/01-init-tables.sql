@@ -198,7 +198,11 @@ CREATE INDEX idx_activ_drug_drug  ON activ_drug(drug_id);
 CREATE INDEX idx_refresh_usr ON refresh(usr_id);
 CREATE INDEX idx_email_token_usr ON email_token(usr_id);
 
-CREATE UNIQUE INDEX uniq_email_token_usr_type 
+CREATE INDEX idx_audit_log_entity ON audit_log(entity_type, entity_id);
+CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
+CREATE INDEX idx_audit_log_changed_by ON audit_log(changed_by) WHERE changed_by IS NOT NULL;
+
+CREATE UNIQUE INDEX uniq_email_token_usr_type
 ON email_token(usr_id, token_type);
 
 CREATE UNIQUE INDEX uniq_usr_email_active
@@ -218,17 +222,3 @@ ON phys(LOWER(phys_email))
 WHERE is_deleted = FALSE;
 
 
-
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_org_updated_at    BEFORE UPDATE ON org    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_phys_updated_at   BEFORE UPDATE ON phys   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_drug_updated_at   BEFORE UPDATE ON drug   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_usr_updated_at    BEFORE UPDATE ON usr    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_activ_updated_at  BEFORE UPDATE ON activ  FOR EACH ROW EXECUTE FUNCTION set_updated_at();

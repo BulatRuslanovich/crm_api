@@ -30,6 +30,9 @@ public static class ServiceExtensions
 
 		public void AddServices()
 		{
+			services.AddHttpContextAccessor();
+			services.AddScoped<ICurrentUserService, CurrentUserService>();
+			services.AddScoped<IAuditService, AuditService>();
 			services.AddScoped<IUserService, UserService>();
 			services.AddScoped<IAuthService, AuthService>();
 			services.AddScoped<IAuthSessionService, AuthSessionService>();

@@ -14,6 +14,9 @@ public class PhysOrg
 	[Column("org_id")]
 	public int OrgId { get; init; }
 
+	[Column("is_main")]
+	public bool IsMain { get; set; }
+
 	public Phys Phys { get; init; } = null!;
 	public Organization Org { get; init; } = null!;
 }

@@ -22,10 +22,10 @@ public class Organization
 	public string OrgInn { get; set; } = null!;
 
 	[Column("org_latitude")]
-	public double OrgLatitude { get; set; }
+	public double? OrgLatitude { get; set; }
 
 	[Column("org_longitude")]
-	public double OrgLongitude { get; set; }
+	public double? OrgLongitude { get; set; }
 
 	[MaxLength(500)]
 	[Column("org_address")]

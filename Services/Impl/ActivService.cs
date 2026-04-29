@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Linq.Expressions;
 using CrmWebApi.Common;
+using CrmWebApi.Data;
 using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Activ;
@@ -9,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CrmWebApi.Services.Impl;
 
-public class ActivService(IActivRepository repo) : IActivService
+public class ActivService(IActivRepository repo, IAuditService audit, AppDbContext db) : IActivService
 {
 	private static readonly Expression<Func<Activ, ActivResponse>> ToResponse = a =>
 		new ActivResponse(
@@ -32,6 +34,8 @@ public class ActivService(IActivRepository repo) : IActivService
 			a.ActivStart,
 			a.ActivEnd,
 			a.ActivDescription,
+			a.ActivLatitude,
+			a.ActivLongitude,
 			a.ActivDrugs.Select(ad => new DrugResponse(
 					ad.DrugId,
 					ad.Drug.DrugName,
@@ -119,6 +123,8 @@ public class ActivService(IActivRepository repo) : IActivService
 				a.ActivStart,
 				a.ActivEnd,
 				a.ActivDescription,
+				a.ActivLatitude,
+				a.ActivLongitude,
 			})
 			.ToListAsync();
 
@@ -138,6 +144,7 @@ public class ActivService(IActivRepository repo) : IActivService
 			a.PhysId, a.PhysName,
 			a.StatusId, a.StatusName,
 			a.ActivStart, a.ActivEnd, a.ActivDescription,
+			a.ActivLatitude, a.ActivLongitude,
 			[.. drugMap[a.ActivId]]
 		)).ToList();
 
@@ -164,12 +171,14 @@ public class ActivService(IActivRepository repo) : IActivService
 				a.ActivStart,
 				a.ActivEnd,
 				a.ActivDescription,
+				a.ActivLatitude,
+				a.ActivLongitude,
 			})
 			.FirstOrDefaultAsync();
 
 		if (entity is null)
 			return Error.NotFound($"Активность {id} не найдена");
-		
+
 		var drugs = await repo.QueryDrugsForActivs([id])
 			.Select(ad => new
 			{
@@ -185,6 +194,7 @@ public class ActivService(IActivRepository repo) : IActivService
 			entity.PhysId, entity.PhysName,
 			entity.StatusId, entity.StatusName,
 			entity.ActivStart, entity.ActivEnd, entity.ActivDescription,
+			entity.ActivLatitude, entity.ActivLongitude,
 			[.. drugMap[entity.ActivId]]
 		);
 	}
@@ -200,9 +210,14 @@ public class ActivService(IActivRepository repo) : IActivService
 			ActivStart = req.Start,
 			ActivEnd = req.End,
 			ActivDescription = req.Description,
+			ActivLatitude = req.Latitude,
+			ActivLongitude = req.Longitude,
 		};
 
+		await using var tx = await db.Database.BeginTransactionAsync();
 		var added = await repo.AddAsync(activ);
+		await audit.LogCreateAsync(AuditEntityType.Activ, added.ActivId);
+		await tx.CommitAsync();
 
 		return await GetByIdAsync(added.ActivId, Scope.ForAll(usrId));
 	}
@@ -217,24 +232,50 @@ public class ActivService(IActivRepository repo) : IActivService
 		if (activ is null)
 			return Error.NotFound($"Активность {id} не найдена");
 
+		var diffs = new List<AuditDiff>();
+		if (req.StatusId is { } st && st != activ.StatusId)
+			diffs.Add(new("status_id", activ.StatusId.ToString(), st.ToString()));
+		if (req.Start is { } start && start != activ.ActivStart)
+			diffs.Add(new("activ_start", activ.ActivStart?.ToString("O"), start.ToString("O")));
+		if (req.End is { } end && end != activ.ActivEnd)
+			diffs.Add(new("activ_end", activ.ActivEnd?.ToString("O"), end.ToString("O")));
+		if (req.Description is { } desc && desc != activ.ActivDescription)
+			diffs.Add(new("activ_description", activ.ActivDescription, desc));
+		if (req.Latitude is { } lat && lat != activ.ActivLatitude)
+			diffs.Add(new("activ_latitude", activ.ActivLatitude?.ToString(CultureInfo.InvariantCulture), lat.ToString(CultureInfo.InvariantCulture)));
+		if (req.Longitude is { } lon && lon != activ.ActivLongitude)
+			diffs.Add(new("activ_longitude", activ.ActivLongitude?.ToString(CultureInfo.InvariantCulture), lon.ToString(CultureInfo.InvariantCulture)));
+
+		if (diffs.Count == 0)
+			return await GetByIdAsync(id, Scope.ForAll(scope.CurrentUsrId));
+
 		activ.StatusId = req.StatusId ?? activ.StatusId;
 		activ.ActivStart = req.Start ?? activ.ActivStart;
 		activ.ActivEnd = req.End ?? activ.ActivEnd;
 		activ.ActivDescription = req.Description ?? activ.ActivDescription;
+		activ.ActivLatitude = req.Latitude ?? activ.ActivLatitude;
+		activ.ActivLongitude = req.Longitude ?? activ.ActivLongitude;
 
+		await using var tx = await db.Database.BeginTransactionAsync();
 		await repo.UpdateAsync(activ);
+		await audit.LogUpdateAsync(AuditEntityType.Activ, id, diffs);
+		await tx.CommitAsync();
 		return await GetByIdAsync(id, Scope.ForAll(scope.CurrentUsrId));
 	}
 
 	public async Task<Result> DeleteAsync(int id, Scope scope)
 	{
+		await using var tx = await db.Database.BeginTransactionAsync();
 		var affected = await repo.QueryForScope(scope)
 			.Where(a => a.ActivId == id)
 			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
 
-		return affected == 0
-			? Error.NotFound($"Активность {id} не найдена")
-			: Result.Success();
+		if (affected == 0)
+			return Error.NotFound($"Активность {id} не найдена");
+
+		await audit.LogDeleteAsync(AuditEntityType.Activ, id);
+		await tx.CommitAsync();
+		return Result.Success();
 	}
 
 	public async Task<Result> LinkDrugAsync(int activId, int drugId, Scope scope)

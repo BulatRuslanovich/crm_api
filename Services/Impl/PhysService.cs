@@ -1,4 +1,5 @@
 using CrmWebApi.Common;
+using CrmWebApi.Data;
 using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Org;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
-public class PhysService(IPhysRepository repo, HybridCache cache)
+public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService audit, AppDbContext db)
 	: IPhysService
 {
 	private static readonly string[] SpecTags = ["specs"];
@@ -58,8 +59,8 @@ public class PhysService(IPhysRepository repo, HybridCache cache)
 						"-",
 						po.Org.OrgName,
 						"-",
-						0,
-						0,
+						null,
+						null,
 						"-"
 					))
 					.ToList()
@@ -88,8 +89,8 @@ public class PhysService(IPhysRepository repo, HybridCache cache)
 						"-",
 						po.Org.OrgName,
 						"-",
-						0,
-						0,
+						null,
+						null,
 						"-"
 					))
 					.ToList()
@@ -112,37 +113,79 @@ public class PhysService(IPhysRepository repo, HybridCache cache)
 			PhysEmail = req.Email,
 		};
 
+		await using var tx = await db.Database.BeginTransactionAsync();
 		await repo.AddAsync(phys);
+		await audit.LogCreateAsync(AuditEntityType.Phys, phys.PhysId);
+		await tx.CommitAsync();
+
 		return await GetByIdAsync(phys.PhysId);
 	}
 
 	public async Task<Result<PhysResponse>> UpdateAsync(int id, UpdatePhysRequest req)
 	{
-		var affected = await repo.QueryLite()
+		var old = await repo.QueryLite()
 			.Where(p => p.PhysId == id)
-			.ExecuteUpdateAsync(s => s
-				.SetProperty(p => p.SpecId, p => req.SpecId ?? p.SpecId)
-				.SetProperty(p => p.PhysFirstname, p => req.FirstName ?? p.PhysFirstname)
-				.SetProperty(p => p.PhysLastname, p => req.LastName ?? p.PhysLastname)
-				.SetProperty(p => p.PhysMiddlename, p => req.MiddleName ?? p.PhysMiddlename)
-				.SetProperty(p => p.PhysPhone, p => req.Phone ?? p.PhysPhone)
-				.SetProperty(p => p.PhysEmail, p => req.Email ?? p.PhysEmail));
+			.Select(p => new
+			{
+				p.SpecId,
+				p.PhysFirstname,
+				p.PhysLastname,
+				p.PhysMiddlename,
+				p.PhysPhone,
+				p.PhysEmail,
+			})
+			.FirstOrDefaultAsync();
 
-		if (affected == 0)
+		if (old is null)
 			return Error.NotFound($"Физическое лицо {id} не найдено");
+
+		var diffs = new List<AuditDiff>();
+		if (req.SpecId is { } sid && sid != old.SpecId)
+			diffs.Add(new("spec_id", old.SpecId.ToString(), sid.ToString()));
+		if (req.FirstName is { } fn && fn != old.PhysFirstname)
+			diffs.Add(new("phys_firstname", old.PhysFirstname, fn));
+		if (req.LastName is { } ln && ln != old.PhysLastname)
+			diffs.Add(new("phys_lastname", old.PhysLastname, ln));
+		if (req.MiddleName is { } mn && mn != old.PhysMiddlename)
+			diffs.Add(new("phys_middlename", old.PhysMiddlename, mn));
+		if (req.Phone is { } ph && ph != old.PhysPhone)
+			diffs.Add(new("phys_phone", old.PhysPhone, ph));
+		if (req.Email is { } em && em != old.PhysEmail)
+			diffs.Add(new("phys_email", old.PhysEmail, em));
+
+		if (diffs.Count > 0)
+		{
+			await using var tx = await db.Database.BeginTransactionAsync();
+			await repo.QueryLite()
+				.Where(p => p.PhysId == id)
+				.ExecuteUpdateAsync(s => s
+					.SetProperty(p => p.SpecId, p => req.SpecId ?? p.SpecId)
+					.SetProperty(p => p.PhysFirstname, p => req.FirstName ?? p.PhysFirstname)
+					.SetProperty(p => p.PhysLastname, p => req.LastName ?? p.PhysLastname)
+					.SetProperty(p => p.PhysMiddlename, p => req.MiddleName ?? p.PhysMiddlename)
+					.SetProperty(p => p.PhysPhone, p => req.Phone ?? p.PhysPhone)
+					.SetProperty(p => p.PhysEmail, p => req.Email ?? p.PhysEmail));
+
+			await audit.LogUpdateAsync(AuditEntityType.Phys, id, diffs);
+			await tx.CommitAsync();
+		}
 
 		return await GetByIdAsync(id);
 	}
 
 	public async Task<Result> DeleteAsync(int id)
 	{
+		await using var tx = await db.Database.BeginTransactionAsync();
 		var affected = await repo.QueryLite()
 		.Where(a => a.PhysId == id)
 		 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
 
-		return affected == 0
-			? Error.NotFound($"Физическое лицо {id} не найдено")
-			: Result.Success();
+		if (affected == 0)
+			return Error.NotFound($"Физическое лицо {id} не найдено");
+
+		await audit.LogDeleteAsync(AuditEntityType.Phys, id);
+		await tx.CommitAsync();
+		return Result.Success();
 	}
 
 	public async Task<Result> LinkOrgAsync(int physId, int orgId)

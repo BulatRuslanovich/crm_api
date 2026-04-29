@@ -15,5 +15,7 @@ public record ActivResponse(
 	DateTimeOffset? Start,
 	DateTimeOffset? End,
 	string Description,
+	double? Latitude,
+	double? Longitude,
 	List<DrugResponse> Drugs
 );

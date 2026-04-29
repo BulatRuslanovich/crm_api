@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 	public DbSet<ActivDrug> ActivDrugs { get; set; }
 	public DbSet<Refresh> Refreshes { get; set; }
 	public DbSet<EmailToken> EmailTokens { get; set; }
+	public DbSet<AuditLog> AuditLogs { get; set; }
 
 	protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
 	{

@@ -53,7 +53,7 @@ public class DepartmentService(IDepartmentRepository repo)
 	{
 		var entity = new Department { DepartmentName = req.DepartmentName };
 		var added = await repo.AddAsync(entity);
-	
+
 		return new DepartmentResponse(added.DepartmentId, added.DepartmentName, 0);
 	}
 

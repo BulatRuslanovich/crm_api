@@ -4,5 +4,7 @@ public record UpdateActivRequest(
 	int? StatusId,
 	DateTimeOffset? Start,
 	DateTimeOffset? End,
-	string? Description
+	string? Description,
+	double? Latitude,
+	double? Longitude
 );

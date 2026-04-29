@@ -20,7 +20,11 @@ public class AuthService(
 {
 	public async Task<Result<PendingConfirmationResponse>> RegisterAsync(RegisterRequest req)
 	{
-		if (await userRepo.ExistsAsync(u => (u.UsrLogin == req.Login || u.UsrEmail == req.Email) && !u.IsDeleted))
+		var loginLower = req.Login.ToLower();
+		var emailLower = req.Email.ToLower();
+		if (await userRepo.ExistsAsync(u =>
+			(u.UsrLogin.ToLower() == loginLower || u.UsrEmail.ToLower() == emailLower)
+			&& !u.IsDeleted))
 			return Error.Conflict("Пользователь с такими данными уже зарегистрирован");
 
 		var requireEmailConfirmation = IsEmailConfirmationRequired();
@@ -66,7 +70,8 @@ public class AuthService(
 
 	public async Task<Result<AuthTokens>> ConfirmEmailAsync(ConfirmEmailRequest req)
 	{
-		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail == req.Email);
+		var emailLower = req.Email.ToLower();
+		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail.ToLower() == emailLower);
 		if (user is null || user.IsEmailConfirmed)
 			return Error.Validation("Неверный или истёкший код");
 
@@ -89,7 +94,8 @@ public class AuthService(
 		if (!IsEmailConfirmationRequired())
 			return Result.Success();
 
-		var user = await userRepo.QueryForRead().FirstOrDefaultAsync(u => u.UsrEmail == email && !u.IsDeleted);
+		var emailLower = email.ToLower();
+		var user = await userRepo.QueryForRead().FirstOrDefaultAsync(u => u.UsrEmail.ToLower() == emailLower && !u.IsDeleted);
 		if (user is null || user.IsEmailConfirmed)
 			return Result.Success();
 
@@ -116,9 +122,10 @@ public class AuthService(
 
 	public async Task<Result<AuthTokens>> LoginAsync(LoginRequest req)
 	{
+		var loginLower = req.Login.ToLower();
 		var user = await userRepo
 			.QueryWithPolicies()
-			.FirstOrDefaultAsync(u => u.UsrLogin == req.Login);
+			.FirstOrDefaultAsync(u => u.UsrLogin.ToLower() == loginLower);
 
 		if (user is null || !passwordHasher.Verify(req.Password, user.UsrPasswordHash))
 			return Error.Unauthorized("Неверный логин или пароль");
@@ -141,9 +148,10 @@ public class AuthService(
 
 	public async Task<Result> ForgotPasswordAsync(string email)
 	{
+		var emailLower = email.ToLower();
 		var user = await userRepo
 			.QueryForRead()
-			.FirstOrDefaultAsync(u => u.UsrEmail == email && u.IsEmailConfirmed && !u.IsDeleted);
+			.FirstOrDefaultAsync(u => u.UsrEmail.ToLower() == emailLower && u.IsEmailConfirmed && !u.IsDeleted);
 		if (user is null)
 			return Result.Success();
 
@@ -170,7 +178,8 @@ public class AuthService(
 
 	public async Task<Result> ResetPasswordAsync(ResetPasswordRequest req)
 	{
-		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail == req.Email && u.IsEmailConfirmed && !u.IsDeleted);
+		var emailLower = req.Email.ToLower();
+		var user = await userRepo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrEmail.ToLower() == emailLower && u.IsEmailConfirmed && !u.IsDeleted);
 		if (user is null)
 			return Result.Success();
 

@@ -58,7 +58,8 @@ public class UserService(
 
 	public async Task<Result<UserResponse>> CreateAsync(CreateUserRequest req)
 	{
-		if (await repo.ExistsAsync(u => u.UsrLogin == req.Login))
+		var loginLower = req.Login.ToLower();
+		if (await repo.ExistsAsync(u => u.UsrLogin.ToLower() == loginLower && !u.IsDeleted))
 			return Error.Conflict("Логин уже занят");
 
 		var user = new Usr
