@@ -17,5 +17,32 @@ services:
       timeout: 5s
       retries: 10
 
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./provisioning/ollama-init.sh:/ollama-init.sh:ro
+    entrypoint: ["/bin/sh", "/ollama-init.sh"]
+    environment:
+      OLLAMA_KEEP_ALIVE: "30m"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:3b}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
 volumes:
   postgres_dev_data:
+  ollama_data:

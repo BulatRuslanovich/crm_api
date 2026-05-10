@@ -21,6 +21,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 	public DbSet<Refresh> Refreshes { get; set; }
 	public DbSet<EmailToken> EmailTokens { get; set; }
 	public DbSet<AuditLog> AuditLogs { get; set; }
+	public DbSet<AssistantConversation> AssistantConversations { get; set; }
+	public DbSet<AssistantMessage> AssistantMessages { get; set; }
 
 	protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
 	{
@@ -41,5 +43,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 		modelBuilder.Entity<UsrDepartment>().HasKey(ud => new { ud.UsrId, ud.DepartmentId });
 
 		modelBuilder.Entity<EmailToken>().HasIndex(t => new { t.UsrId, t.TokenType }).IsUnique();
+
+		modelBuilder.Entity<AssistantConversation>().HasIndex(c => new { c.UsrId, c.UpdatedAt });
+		modelBuilder
+			.Entity<AssistantMessage>()
+			.HasOne(m => m.Conversation)
+			.WithMany(c => c.Messages)
+			.HasForeignKey(m => m.ConversationId)
+			.OnDelete(DeleteBehavior.Cascade);
+		modelBuilder
+			.Entity<AssistantMessage>()
+			.HasIndex(m => new { m.ConversationId, m.CreatedAt });
 	}
 }

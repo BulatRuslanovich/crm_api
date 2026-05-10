@@ -5,7 +5,10 @@ using CrmWebApi.Options;
 using CrmWebApi.Repositories;
 using CrmWebApi.Repositories.Impl;
 using CrmWebApi.Services;
+using CrmWebApi.Services.Assistant.Providers;
+using CrmWebApi.Services.Assistant.Tools;
 using CrmWebApi.Services.Impl;
+using CrmWebApi.Services.Impl.Assistant;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -44,6 +47,25 @@ public static class ServiceExtensions
 			services.AddScoped<IPhysService, PhysService>();
 			services.AddScoped<IActivService, ActivService>();
 			services.AddScoped<IDepartmentService, DepartmentService>();
+
+			services.AddScoped<IAssistantTool, SearchDrugsTool>();
+			services.AddScoped<IAssistantTool, SearchPhysesTool>();
+			services.AddScoped<IAssistantTool, SearchOrgsTool>();
+			services.AddScoped<IAssistantService, AssistantService>();
+		}
+
+		public void AddAssistant(IConfiguration config)
+		{
+			var section = config.GetSection(AssistantOptions.SectionName);
+			services.AddOptions<AssistantOptions>().Bind(section);
+
+			var opts = section.Get<AssistantOptions>() ?? new AssistantOptions();
+
+			services.AddHttpClient<IChatProvider, OllamaProvider>(client =>
+			{
+				client.BaseAddress = new Uri(opts.Ollama.BaseUrl);
+				client.Timeout = Timeout.InfiniteTimeSpan;
+			});
 		}
 
 		public void AddApiCaching(IConfiguration config)
