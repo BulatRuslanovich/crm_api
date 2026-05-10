@@ -5,6 +5,7 @@ using CrmWebApi.Options;
 using CrmWebApi.Repositories;
 using CrmWebApi.Repositories.Impl;
 using CrmWebApi.Services;
+using CrmWebApi.Services.Assistant;
 using CrmWebApi.Services.Assistant.Providers;
 using CrmWebApi.Services.Assistant.Tools;
 using CrmWebApi.Services.Impl;
@@ -51,6 +52,13 @@ public static class ServiceExtensions
 			services.AddScoped<IAssistantTool, SearchDrugsTool>();
 			services.AddScoped<IAssistantTool, SearchPhysesTool>();
 			services.AddScoped<IAssistantTool, SearchOrgsTool>();
+			services.AddScoped<IAssistantTool, GetDrugDetailsTool>();
+			services.AddScoped<IAssistantTool, GetPhysDetailsTool>();
+			services.AddScoped<IAssistantTool, GetOrgDetailsTool>();
+			services.AddScoped<IAssistantTool, ListActivsTool>();
+			services.AddScoped<IAssistantTool, GetActivDetailsTool>();
+			services.AddScoped<IAssistantTool, ProposeCreateActivTool>();
+			services.AddSingleton<IAssistantActionStore, InMemoryAssistantActionStore>();
 			services.AddScoped<IAssistantService, AssistantService>();
 		}
 

@@ -23,4 +23,6 @@ public interface IAssistantService
 	);
 
 	Task<Result> DeleteConversationAsync(int usrId, long conversationId, CancellationToken ct);
+
+	Task<Result<object>> ConfirmActionAsync(int usrId, string actionId, CancellationToken ct);
 }

@@ -32,16 +32,28 @@ public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService au
 		if (!string.IsNullOrEmpty(search))
 		{
 			var pattern = "%" + search + "%";
+			const double threshold = 0.3;
 
 			query = query.Where(o =>
 				EF.Functions.ILike(o.OrgName, pattern)
 				|| EF.Functions.ILike(o.OrgAddress, pattern)
+				|| EF.Functions.TrigramsSimilarity(o.OrgName, search) > threshold
+				|| EF.Functions.TrigramsSimilarity(o.OrgAddress, search) > threshold
 			);
 		}
 
 		var total = includeTotal ? await query.CountAsync() : 0;
-		var items = await query
-			.OrderBy(o => o.OrgId)
+		var ordered = string.IsNullOrEmpty(search)
+			? query.OrderBy(o => o.OrgId)
+			: query
+				.OrderByDescending(o =>
+					EF.Functions.TrigramsSimilarity(o.OrgName, search) >
+					EF.Functions.TrigramsSimilarity(o.OrgAddress, search)
+						? EF.Functions.TrigramsSimilarity(o.OrgName, search)
+						: EF.Functions.TrigramsSimilarity(o.OrgAddress, search))
+				.ThenBy(o => o.OrgId);
+
+		var items = await ordered
 			.Skip((page - 1) * pageSize)
 			.Take(pageSize)
 			.Select(o => new OrgResponse(

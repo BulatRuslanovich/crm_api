@@ -71,4 +71,13 @@ public class AssistantController(IAssistantService service) : ApiController
 		if (!int.TryParse(usrIdClaim, out var usrId)) return ForbiddenProblem();
 		return FromResult(await service.DeleteConversationAsync(usrId, id, ct));
 	}
+
+	[HttpPost("confirm/{actionId}")]
+	[EndpointSummary("Execute a pending assistant action draft")]
+	public async Task<IActionResult> Confirm(string actionId, CancellationToken ct)
+	{
+		var usrIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+		if (!int.TryParse(usrIdClaim, out var usrId)) return ForbiddenProblem();
+		return FromResult(await service.ConfirmActionAsync(usrId, actionId, ct));
+	}
 }

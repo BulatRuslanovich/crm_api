@@ -32,16 +32,30 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 		if (!string.IsNullOrEmpty(search))
 		{
 			var pattern = "%" + search + "%";
+			const double threshold = 0.3;
+
 			query = query.Where(p =>
 				EF.Functions.ILike(p.PhysFirstname, pattern)
 				|| EF.Functions.ILike(p.PhysLastname, pattern)
 				|| EF.Functions.ILike(p.PhysMiddlename ?? "", pattern)
+				|| EF.Functions.TrigramsSimilarity(p.PhysFirstname, search) > threshold
+				|| EF.Functions.TrigramsSimilarity(p.PhysLastname, search) > threshold
+				|| EF.Functions.TrigramsSimilarity(p.PhysMiddlename ?? "", search) > threshold
 			);
 		}
 
 		var total = includeTotal ? await query.CountAsync() : 0;
-		var items = await query
-			.OrderBy(p => p.PhysId)
+		var ordered = string.IsNullOrEmpty(search)
+			? query.OrderBy(p => p.PhysId)
+			: query
+				.OrderByDescending(p =>
+					EF.Functions.TrigramsSimilarity(p.PhysLastname, search) >
+					EF.Functions.TrigramsSimilarity(p.PhysFirstname, search)
+						? EF.Functions.TrigramsSimilarity(p.PhysLastname, search)
+						: EF.Functions.TrigramsSimilarity(p.PhysFirstname, search))
+				.ThenBy(p => p.PhysId);
+
+		var items = await ordered
 			.Skip((page - 1) * pageSize)
 			.Take(pageSize)
 			.Select(p => new PhysResponse(

@@ -17,24 +17,47 @@ public class DrugService(AppDbContext db) : IDrugService
 	)
 	{
 		var query = db.Drugs.Where(d => !d.IsDeleted).AsNoTracking();
+		var total = 0;
+		List<DrugResponse> items;
 
 		if (!string.IsNullOrEmpty(search))
 		{
 			var pattern = "%" + search + "%";
+			const double threshold = 0.3;
 
-			query = query.Where(d =>
+			var filtered = query.Where(d =>
 				EF.Functions.ILike(d.DrugName, pattern)
 				|| EF.Functions.ILike(d.DrugBrand, pattern)
+				|| EF.Functions.TrigramsSimilarity(d.DrugName, search) > threshold
+				|| EF.Functions.TrigramsSimilarity(d.DrugBrand, search) > threshold
 			);
+
+			if (includeTotal) total = await filtered.CountAsync();
+
+			items = await filtered
+				.OrderByDescending(d =>
+					EF.Functions.TrigramsSimilarity(d.DrugName, search) >
+					EF.Functions.TrigramsSimilarity(d.DrugBrand, search)
+						? EF.Functions.TrigramsSimilarity(d.DrugName, search)
+						: EF.Functions.TrigramsSimilarity(d.DrugBrand, search))
+				.ThenBy(d => d.DrugId)
+				.Skip((page - 1) * pageSize)
+				.Take(pageSize)
+				.Select(d => new DrugResponse(d.DrugId, d.DrugName, d.DrugBrand, d.DrugForm))
+				.ToListAsync();
+		}
+		else
+		{
+			if (includeTotal) total = await query.CountAsync();
+
+			items = await query
+				.OrderBy(d => d.DrugId)
+				.Skip((page - 1) * pageSize)
+				.Take(pageSize)
+				.Select(d => new DrugResponse(d.DrugId, d.DrugName, d.DrugBrand, d.DrugForm))
+				.ToListAsync();
 		}
 
-		var total = includeTotal ? await query.CountAsync() : 0;
-		var items = await query
-			.OrderBy(d => d.DrugId)
-			.Skip((page - 1) * pageSize)
-			.Take(pageSize)
-			.Select(d => new DrugResponse(d.DrugId, d.DrugName, d.DrugBrand, d.DrugForm))
-			.ToListAsync();
 		return new PagedResponse<DrugResponse>(items, page, pageSize, total);
 	}
 

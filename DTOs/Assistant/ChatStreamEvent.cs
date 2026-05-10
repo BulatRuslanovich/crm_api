@@ -8,6 +8,8 @@ public static class ChatStreamEventType
 	public const string Token = "token";
 	public const string ToolCall = "tool_call";
 	public const string ToolResult = "tool_result";
+	public const string ActionProposed = "action_proposed";
+	public const string ActionExecuted = "action_executed";
 	public const string Done = "done";
 	public const string Error = "error";
 }
@@ -21,3 +23,6 @@ public sealed record ToolCallPayload(string Name, string ArgumentsJson);
 public sealed record ToolResultPayload(string Name, string ResultJson, bool IsError);
 
 public sealed record ErrorPayload(string Message);
+
+public sealed record ActionProposedPayload(string ActionId, string Tool, string Summary, int ExpiresInMinutes);
+
