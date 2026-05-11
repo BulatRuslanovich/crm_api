@@ -24,12 +24,21 @@ public sealed class AssistantService(
 	ILogger<AssistantService> logger
 ) : IAssistantService
 {
-	private static string BuildSystemPrompt()
+	private static string? _cachedUiGuide;
+	private static DateTime _cachedUiGuideAt;
+	private static readonly Lock UiGuideLock = new();
+
+	private string BuildSystemPrompt()
 	{
 		var nowMoscow = TimeZoneInfo.ConvertTime(
 			DateTimeOffset.UtcNow,
 			TryGetTimeZone("Europe/Moscow") ?? TimeZoneInfo.Utc
 		);
+
+		var uiGuide = LoadUiGuide(_opts.UiGuidePath);
+		var uiBlock = string.IsNullOrWhiteSpace(uiGuide)
+			? string.Empty
+			: $"\n\nГайд по интерфейсу (показывай пользователю по запросу «где найти…», «как создать…» и т.п.):\n{uiGuide.Trim()}\n";
 
 		return $$"""
 			Ты — AI-ассистент CRM-системы для фармацевтической компании. Твоя ЕДИНСТВЕННАЯ задача —
@@ -103,6 +112,7 @@ public sealed class AssistantService(
 			Запрос «напиши сортировку пузырьком».
 			ХОРОШИЙ ответ:
 			  Я ассистент CRM и помогаю только с препаратами, врачами, организациями и визитами. Что-то найти или запланировать визит?
+			{{uiBlock}}
 			""";
 	}
 
@@ -110,6 +120,28 @@ public sealed class AssistantService(
 	{
 		try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
 		catch { return null; }
+	}
+
+	private static string LoadUiGuide(string path)
+	{
+		if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+
+		lock (UiGuideLock)
+		{
+			if (_cachedUiGuide is not null && DateTime.UtcNow - _cachedUiGuideAt < TimeSpan.FromSeconds(30))
+				return _cachedUiGuide;
+
+			try
+			{
+				_cachedUiGuide = File.Exists(path) ? File.ReadAllText(path) : string.Empty;
+			}
+			catch
+			{
+				_cachedUiGuide = string.Empty;
+			}
+			_cachedUiGuideAt = DateTime.UtcNow;
+			return _cachedUiGuide;
+		}
 	}
 
 	private readonly Dictionary<string, IAssistantTool> _toolsByName =
