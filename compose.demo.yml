@@ -40,6 +40,13 @@ services:
     environment:
       OLLAMA_KEEP_ALIVE: "30m"
       OLLAMA_MODEL: ${OLLAMA_MODEL:?OLLAMA_MODEL is required in .env.local}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -71,6 +78,10 @@ services:
       Cache__RedisConnectionString: redis:6379,abortConnect=false
       ForwardedHeaders__KnownProxies__0: 127.0.0.1
       ForwardedHeaders__KnownProxies__1: 172.28.0.10
+      Assistant__Provider: cloud-fallback
+      Assistant__Cloud__BaseUrl: https://api.groq.com/openai/v1
+      Assistant__Cloud__Model: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      Assistant__Cloud__ApiKey: ${GROQ_API_KEY:?GROQ_API_KEY is required in .env.local}
     networks:
       internal:
         ipv4_address: 172.28.0.20
