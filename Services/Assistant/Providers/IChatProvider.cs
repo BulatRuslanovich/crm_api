@@ -2,9 +2,9 @@ namespace CrmWebApi.Services.Assistant.Providers;
 
 public interface IChatProvider
 {
-	string Name { get; }
+	public string Name { get; }
 
-	IAsyncEnumerable<ChatProviderEvent> StreamAsync(
+	public IAsyncEnumerable<ChatProviderEvent> StreamAsync(
 		IReadOnlyList<ChatHistoryMessage> history,
 		IReadOnlyList<ToolDefinition> tools,
 		CancellationToken ct

@@ -1,12 +1,14 @@
 ## .NET
 bin/
 obj/
+artifacts/
 *.user
 *.suo
 .vs/
 
 ## Secrets
 appsettings.*.json
+!appsettings.Development.json
 .env
 .env.local
 

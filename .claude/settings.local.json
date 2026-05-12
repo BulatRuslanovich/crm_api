@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec *)",
+      "Bash(curl -s -o NUL -w \"Caddy → /api/api/auth/login : HTTP %{http_code}\\\\n\" -X POST http://localhost/api/api/auth/login -H \"Content-Type: application/json\" -d \"{}\")"
+    ]
+  }
+}

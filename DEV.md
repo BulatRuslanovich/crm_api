@@ -41,13 +41,15 @@ dotnet restore
 
 ## 2. Поднять инфраструктуру
 
-Для разработки есть отдельный compose-файл с Postgres на `localhost:5432`:
+Для локальной разработки достаточно Postgres из demo-стека. Подготовьте `.env.local` (см. [`.env.example`](.env.example)) и поднимите только нужные сервисы:
 
 ```bash
-docker compose -f compose.dev.yml up -d
+docker compose --env-file .env.local -f compose.demo.yml up -d db
 ```
 
-**Креды по умолчанию:**
+Postgres слушает `localhost:5432`. SQL-скрипты из папки [`sql-scripts/`](sql-scripts/) автоматически применяются при первом запуске контейнера.
+
+**Креды:**
 
 | Параметр | Значение |
 |---|---|
@@ -55,18 +57,19 @@ docker compose -f compose.dev.yml up -d
 | Port | `5432` |
 | Database | `crm_db` |
 | User | `crm_user` |
-| Password | `${DB_PASSWORD:-12345678lol}` |
+| Password | значение `DB_PASSWORD` из `.env.local` |
 
-SQL-скрипты из папки [`sql-scripts/`](sql-scripts/) автоматически применяются при первом запуске контейнера.
+Redis не обязателен: без `Cache:RedisConnectionString` используется in-memory HybridCache. Если нужен — поднимите `redis` тем же compose:
 
-
-Production compose дополнительно поднимает Redis и передает API `Cache__RedisConnectionString`. Локально Redis не обязателен: без `Cache:RedisConnectionString` используется in-memory HybridCache.
+```bash
+docker compose --env-file .env.local -f compose.demo.yml up -d db redis
+```
 
 **Сброс БД** (полностью удалит данные):
 
 ```bash
-docker compose -f compose.dev.yml down -v
-docker compose -f compose.dev.yml up -d
+docker compose --env-file .env.local -f compose.demo.yml down -v
+docker compose --env-file .env.local -f compose.demo.yml up -d db
 ```
 
 ## 3. Настроить секреты
@@ -201,8 +204,8 @@ CrmWebApi/
 Контейнер не запущен:
 
 ```bash
-docker compose -f compose.dev.yml ps
-docker compose -f compose.dev.yml logs db
+docker compose --env-file .env.local -f compose.demo.yml ps
+docker compose --env-file .env.local -f compose.demo.yml logs db
 ```
 
 ### `JWT secret must be at least 32 chars`

@@ -20,57 +20,65 @@
 
 ## Стек технологий
 
-| Категория | Технологии |
-|---|---|
-| Runtime | .NET 10, ASP.NET Core |
-| База данных | PostgreSQL 17 |
-| ORM | Entity Framework Core 9 |
-| Аутентификация | JWT Bearer |
-| Кэширование | HybridCache; in-memory локально, Redis в production compose |
-| Email | MailKit (Gmail SMTP) |
-| Документация | OpenAPI + Scalar |
-| Инфраструктура | Docker, Caddy, GitHub Actions CI, Pharmo Web, Grafana |
+| Категория      | Технологии                                                  |
+|----------------|-------------------------------------------------------------|
+| Runtime        | .NET 10, ASP.NET Core                                       |
+| База данных    | PostgreSQL 17                                               |
+| ORM            | Entity Framework Core 9                                     |
+| Аутентификация | JWT Bearer                                                  |
+| Кэширование    | HybridCache; in-memory локально, Redis в production compose |
+| Email          | MailKit (Gmail SMTP)                                        |
+| Документация   | OpenAPI + Scalar                                            |
+| Инфраструктура | Docker, Caddy, GitHub Actions CI, Pharmo Web, Grafana       |
 
 
 ## API
 
-| Раздел | Префикс | Описание |
-|---|---|---|
-| Auth | `/api/auth` | регистрация, вход, OTP, refresh (rate limit 10/min) |
-| Users | `/api/users` | пользователи и политики доступа |
-| Departments | `/api/departments` | отделы и их участники (Admin only) |
-| Organizations | `/api/orgs` | организации, типы |
-| Contacts | `/api/physes` | физлица, специализации, связи с орг. |
-| Drugs | `/api/drugs` | препараты |
-| Activities | `/api/activs` | визиты/активности со scope-доступом |
-| Health | `/health`, `/metrics` | health check, Prometheus |
+| Раздел        | Префикс               | Описание                                            |
+|---------------|-----------------------|-----------------------------------------------------|
+| Auth          | `/api/auth`           | регистрация, вход, OTP, refresh (rate limit 10/min) |
+| Users         | `/api/users`          | пользователи и политики доступа                     |
+| Departments   | `/api/departments`    | отделы и их участники (Admin only)                  |
+| Organizations | `/api/orgs`           | организации, типы                                   |
+| Contacts      | `/api/physes`         | физлица, специализации, связи с орг.                |
+| Drugs         | `/api/drugs`          | препараты                                           |
+| Activities    | `/api/activs`         | визиты/активности со scope-доступом                 |
+| Health        | `/health`, `/metrics` | health check, Prometheus                            |
 
 **Ролевая модель для активностей:**
 
-| Роль | Scope |
-|---|---|
-| `Admin`, `Director` | все активности |
-| `Manager` | активности пользователей своего отдела |
-| `Representative` | только свои активности |
+| Роль                | Scope                                  |
+|---------------------|----------------------------------------|
+| `Admin`, `Director` | все активности                         |
+| `Manager`           | активности пользователей своего отдела |
+| `Representative`    | только свои активности                 |
 
 Защищённые эндпоинты требуют заголовок `Authorization: Bearer <access_token>`.
 Scalar UI: `http://localhost:5000/scalar/v1`.
 
-## Docker Compose
+## Demo
 
-Compose-файлы разделены по ролям:
+Единый compose для локальной демонстрации: API + frontend + Caddy + Postgres + Redis + Ollama + Grafana/Loki/Prometheus.
 
-| Файл | Назначение |
-|---|---|
-| `compose.app.yml` | production app stack: API, frontend, Caddy, Postgres, Redis, DB backup |
-| `compose.obs.yml` | observability overlay: Prometheus, Loki, Promtail, cAdvisor, Grafana |
-| `compose.dev.yml` | локальная БД для разработки |
+1. Положите рядом с этим репозиторием чекаут фронтенда: `../crm-web-portal` (или укажите путь через `FRONTEND_PATH`).
+2. Скопируйте шаблон env и заполните значения:
+   ```bash
+   cp .env.example .env.local
+   ```
+3. Поднимите стек:
+   ```bash
+   docker compose --env-file .env.local -f compose.demo.yml up -d --build
+   ```
 
-```bash
-docker compose -f compose.app.yml up -d
-docker compose -f compose.app.yml -f compose.obs.yml up -d
-docker compose -f compose.dev.yml up -d
-```
+API и фронт собираются локально из исходников. Если в `.env.local` не задана хотя бы одна обязательная переменная — compose упадёт сразу с явной ошибкой `is required in .env.local`.
+
+| URL                          | Что                              |
+|------------------------------|----------------------------------|
+| http://localhost             | Frontend (Caddy → frontend:3000) |
+| http://localhost/api/...     | API (Caddy → api:8080)           |
+| http://localhost:3001        | Grafana (admin / `${GRAFANA_ADMIN_PASSWORD}`) |
+| localhost:5432               | Postgres (`crm_user` / `${DB_PASSWORD}`) |
+| http://localhost:11434       | Ollama API                       |
 
 ## Tests
 
@@ -78,7 +86,7 @@ docker compose -f compose.dev.yml up -d
 Он содержит unit-тесты и contract smoke-тесты для auth, authorization, health и основных контроллеров.
 
 ```bash
-dotnet test CrmWebApi.sln
+dotnet test
 ```
 
 

@@ -19,19 +19,6 @@ public static class HostConfigurationExtensions
 	private const string ConsoleTemplate =
 		"[{@t:HH:mm:ss} {@l:u3}] {Coalesce(Substring(SourceContext, LastIndexOf(SourceContext, '.') + 1), '<no source>')} → {@m}\n{@x}";
 
-	private static readonly Dictionary<string, LogEventLevel> Overrides = new()
-	{
-		["Microsoft.AspNetCore.Hosting"] = LogEventLevel.Warning,
-		["Microsoft.AspNetCore.Routing"] = LogEventLevel.Warning,
-		["Microsoft.AspNetCore.Diagnostics"] = LogEventLevel.Warning,
-		["Microsoft.AspNetCore.Authorization"] = LogEventLevel.Warning,
-		["Microsoft.AspNetCore.Authentication"] = LogEventLevel.Warning,
-		["Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor"] = LogEventLevel.Warning,
-		["Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker"] = LogEventLevel.Warning,
-		// ["Microsoft.EntityFrameworkCore.Database.Command"] = LogEventLevel.Warning,
-	};
-
-
 	public static void UseApiSerilog(this ConfigureHostBuilder builder)
 	{
 		builder.UseSerilog(
@@ -40,9 +27,8 @@ public static class HostConfigurationExtensions
 				var isProduction = context.HostingEnvironment.IsProduction();
 
 				config
-					.WriteTo.Console(CreateConsoleTemplate(isProduction))
-					.MinimumLevel.Information()
-					.ApplyOverrides();
+					.ReadFrom.Configuration(context.Configuration)
+					.WriteTo.Console(CreateConsoleTemplate(isProduction));
 
 				if (!isProduction)
 					config.WriteTo.Debug();
@@ -56,14 +42,6 @@ public static class HostConfigurationExtensions
 			ConsoleTemplate,
 			theme: isProduction ? null : TemplateTheme.Code
 		);
-	}
-
-	private static void ApplyOverrides(this LoggerConfiguration config)
-	{
-		foreach (var (source, level) in Overrides)
-		{
-			config.MinimumLevel.Override(source, level);
-		}
 	}
 
 	extension(IServiceCollection services)

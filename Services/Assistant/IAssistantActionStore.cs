@@ -11,6 +11,6 @@ public sealed record PendingAction(
 
 public interface IAssistantActionStore
 {
-	PendingAction Put(int usrId, string tool, string payloadJson, string summary);
-	PendingAction? Take(int usrId, string id);
+	public PendingAction Put(int usrId, string tool, string payloadJson, string summary);
+	public PendingAction? Take(int usrId, string id);
 }
