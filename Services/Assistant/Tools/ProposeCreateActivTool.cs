@@ -16,6 +16,8 @@ public sealed class ProposeCreateActivTool(
 		"Prepare a draft of a new activity (visit) for the user to confirm. " +
 		"DOES NOT write to the database — only stores a pending draft. " +
 		"Always run search_physes / search_orgs first to resolve ids; do not invent ids. " +
+		"If the user has just confirmed one of the previously returned search results, use that result id without searching again. " +
+		"If the user did not provide a description, use a short default description instead of asking another question. " +
 		"After calling this tool, briefly summarize the draft and ask the user to confirm. Do not mention UI elements (buttons, dialogs). " +
 		"Statuses: 1=Запланирован, 2=Открыт, 3=Сохранён, 4=Закрыт, 5=Отменён. Use 1 for new visits unless user said otherwise.";
 
@@ -28,11 +30,11 @@ public sealed class ProposeCreateActivTool(
 		    "statusId":    { "type": "integer", "description": "Status id, default 1 (Запланирован)" },
 		    "start":       { "type": "string",  "description": "ISO-8601 with offset, e.g. 2026-05-11T10:00:00+03:00" },
 		    "end":         { "type": "string",  "description": "Optional end time, ISO-8601 with offset" },
-		    "description": { "type": "string",  "description": "Free-text note about the visit" },
+		    "description": { "type": "string",  "description": "Free-text note about the visit. If omitted, the backend uses a default note." },
 		    "latitude":    { "type": "number" },
 		    "longitude":   { "type": "number" }
 		  },
-		  "required": ["statusId", "start", "description"]
+		  "required": ["statusId", "start"]
 		}
 		""";
 
@@ -43,8 +45,6 @@ public sealed class ProposeCreateActivTool(
 
 		if (!arguments.TryGetProperty("statusId", out var statusEl) || statusEl.ValueKind != JsonValueKind.Number)
 			return Task.FromResult(ToolExecutionResult.Error("statusId обязателен"));
-		if (!arguments.TryGetProperty("description", out var descEl) || descEl.ValueKind != JsonValueKind.String)
-			return Task.FromResult(ToolExecutionResult.Error("description обязателен"));
 		if (!arguments.TryGetProperty("start", out var startEl) || startEl.ValueKind != JsonValueKind.String
 			|| !DateTimeOffset.TryParse(startEl.GetString(), out var start))
 			return Task.FromResult(ToolExecutionResult.Error("start должен быть ISO-8601 с offset"));
@@ -62,7 +62,9 @@ public sealed class ProposeCreateActivTool(
 			StatusId: statusEl.GetInt32(),
 			Start: start,
 			End: end,
-			Description: descEl.GetString()!,
+			Description: arguments.TryGetProperty("description", out var descEl) && descEl.ValueKind == JsonValueKind.String
+				? descEl.GetString() ?? "Плановый визит"
+				: "Плановый визит",
 			Latitude: arguments.TryGetProperty("latitude", out var latEl) && latEl.ValueKind == JsonValueKind.Number
 				? latEl.GetDouble() : null,
 			Longitude: arguments.TryGetProperty("longitude", out var lonEl) && lonEl.ValueKind == JsonValueKind.Number

@@ -58,6 +58,7 @@ public static class ServiceExtensions
 			services.AddScoped<IAssistantTool, ListActivsTool>();
 			services.AddScoped<IAssistantTool, GetActivDetailsTool>();
 			services.AddScoped<IAssistantTool, ProposeCreateActivTool>();
+			services.AddScoped<IAssistantTool, SearchUiHelpTool>();
 			services.AddSingleton<IAssistantActionStore, InMemoryAssistantActionStore>();
 			services.AddScoped<IAssistantService, AssistantService>();
 		}

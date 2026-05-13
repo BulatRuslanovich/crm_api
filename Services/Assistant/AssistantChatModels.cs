@@ -23,7 +23,5 @@ public abstract record ChatProviderEvent;
 
 public sealed record ChatTokenEvent(string Text) : ChatProviderEvent;
 
-public sealed record ChatToolCallEvent(IReadOnlyList<ChatToolCall> Calls) : ChatProviderEvent;
-
 public sealed record ChatFinishedEvent(string FullText, IReadOnlyList<ChatToolCall>? ToolCalls)
 	: ChatProviderEvent;
