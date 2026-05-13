@@ -28,35 +28,6 @@ services:
     networks:
       - internal
 
-  ollama:
-    image: ollama/ollama:latest
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-      - ./provisioning/ollama-init.sh:/ollama-init.sh:ro
-    entrypoint: ["/bin/sh", "/ollama-init.sh"]
-    environment:
-      OLLAMA_KEEP_ALIVE: "30m"
-      OLLAMA_MODEL: ${OLLAMA_MODEL:?OLLAMA_MODEL is required in .env.local}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 120s
-    networks:
-      - internal
-      - egress
-
   api:
     build:
       context: .
@@ -78,10 +49,10 @@ services:
       Cache__RedisConnectionString: redis:6379,abortConnect=false
       ForwardedHeaders__KnownProxies__0: 127.0.0.1
       ForwardedHeaders__KnownProxies__1: 172.28.0.10
-      Assistant__Provider: cloud-fallback
-      Assistant__Cloud__BaseUrl: https://api.groq.com/openai/v1
-      Assistant__Cloud__Model: ${GROQ_MODEL:-llama-3.3-70b-versatile}
-      Assistant__Cloud__ApiKey: ${GROQ_API_KEY:?GROQ_API_KEY is required in .env.local}
+      Assistant__Cloud__BaseUrl: ${DEEPSEEK_BASE_URL:-https://llms.dotpoin.com/v1}
+      Assistant__Cloud__Model: ${DEEPSEEK_MODEL:-deepseek-chat}
+      Assistant__Cloud__ApiKey: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY is required in .env.local}
+      Assistant__Cloud__Stream: "false"
     networks:
       internal:
         ipv4_address: 172.28.0.20
@@ -199,5 +170,4 @@ volumes:
   postgres_data:
   caddy_data:
   caddy_config:
-  ollama_data:
   grafana_data:

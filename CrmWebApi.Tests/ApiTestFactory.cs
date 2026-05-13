@@ -34,6 +34,10 @@ public class ApiTestFactory : WebApplicationFactory<Program>
 		builder.UseSetting("Email:Username", "test");
 		builder.UseSetting("Email:Password", "test");
 		builder.UseSetting("Email:FromAddress", "test@example.com");
+		builder.UseSetting("Assistant:Cloud:BaseUrl", "https://llms.dotpoin.com/v1");
+		builder.UseSetting("Assistant:Cloud:Model", "deepseek-chat");
+		builder.UseSetting("Assistant:Cloud:ApiKey", "test-api-key");
+		builder.UseSetting("Assistant:Cloud:Stream", "false");
 
 		builder.ConfigureServices(services =>
 		{

@@ -30,12 +30,27 @@ public sealed class OpenAiCompatibleProvider(
 			Content = JsonContent.Create(payload),
 		};
 
-		using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+		using var resp = await http.SendAsync(
+			req,
+			_opts.Cloud.Stream ? HttpCompletionOption.ResponseHeadersRead : HttpCompletionOption.ResponseContentRead,
+			ct
+		);
 		if (!resp.IsSuccessStatusCode)
 		{
 			var body = await resp.Content.ReadAsStringAsync(ct);
 			logger.LogError("Cloud provider returned {Status}: {Body}", resp.StatusCode, body);
 			throw new InvalidOperationException($"Cloud provider error {(int)resp.StatusCode}: {body}");
+		}
+
+		if (!_opts.Cloud.Stream)
+		{
+			var body = await resp.Content.ReadAsStringAsync(ct);
+			var finished = ParseNonStreamingResponse(body);
+			if (!string.IsNullOrEmpty(finished.FullText))
+				yield return new ChatTokenEvent(finished.FullText);
+
+			yield return finished;
+			yield break;
 		}
 
 		await using var stream = await resp.Content.ReadAsStreamAsync(ct);
@@ -100,7 +115,7 @@ public sealed class OpenAiCompatibleProvider(
 		return new
 		{
 			model = _opts.Cloud.Model,
-			stream = true,
+			stream = _opts.Cloud.Stream,
 			messages,
 			tools = tools.Count == 0
 				? null
@@ -115,6 +130,60 @@ public sealed class OpenAiCompatibleProvider(
 					},
 				}).ToArray(),
 		};
+	}
+
+	private ChatFinishedEvent ParseNonStreamingResponse(string body)
+	{
+		try
+		{
+			using var doc = JsonDocument.Parse(body);
+			var root = doc.RootElement;
+			if (!root.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array)
+				return new ChatFinishedEvent(string.Empty, null);
+
+			var fullText = new StringBuilder();
+			var toolCalls = new List<ChatToolCall>();
+
+			foreach (var choice in choices.EnumerateArray())
+			{
+				if (!choice.TryGetProperty("message", out var message)) continue;
+
+				if (message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+				{
+					var text = content.GetString();
+					if (!string.IsNullOrEmpty(text))
+						fullText.Append(text);
+				}
+
+				if (message.TryGetProperty("tool_calls", out var calls) && calls.ValueKind == JsonValueKind.Array)
+				{
+					foreach (var call in calls.EnumerateArray())
+					{
+						if (!call.TryGetProperty("function", out var fn)) continue;
+						var name = fn.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String
+							? n.GetString()
+							: null;
+						if (string.IsNullOrEmpty(name)) continue;
+
+						var args = fn.TryGetProperty("arguments", out var a) && a.ValueKind == JsonValueKind.String
+							? a.GetString() ?? "{}"
+							: "{}";
+						var id = call.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String
+							? idEl.GetString()!
+							: $"call_{Guid.NewGuid():N}";
+
+						toolCalls.Add(new ChatToolCall(id, name, args));
+					}
+				}
+			}
+
+			return new ChatFinishedEvent(fullText.ToString(), toolCalls.Count == 0 ? null : toolCalls);
+		}
+		catch (JsonException ex)
+		{
+			logger.LogWarning(ex, "Failed to parse cloud provider response: {Body}", body);
+			return new ChatFinishedEvent(string.Empty, null);
+		}
 	}
 
 	private static object BuildMessage(ChatHistoryMessage m)

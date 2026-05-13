@@ -68,37 +68,18 @@ public static class ServiceExtensions
 			services.AddOptions<AssistantOptions>().Bind(section);
 
 			var opts = section.Get<AssistantOptions>() ?? new AssistantOptions();
-			var provider = string.IsNullOrWhiteSpace(opts.Provider)
-				? AssistantProvider.Ollama
-				: opts.Provider.Trim().ToLowerInvariant();
-
-			if (AssistantProvider.RequiresCloudConfig(provider))
-			{
-				if (string.IsNullOrWhiteSpace(opts.Cloud.BaseUrl))
-					throw new InvalidOperationException(
-						$"Assistant:Provider={provider} but Assistant:Cloud:BaseUrl is empty.");
-				if (string.IsNullOrWhiteSpace(opts.Cloud.Model))
-					throw new InvalidOperationException(
-						$"Assistant:Provider={provider} but Assistant:Cloud:Model is empty.");
-				if (string.IsNullOrWhiteSpace(opts.Cloud.ApiKey))
-					throw new InvalidOperationException(
-						$"Assistant:Provider={provider} but Assistant:Cloud:ApiKey is empty. " +
-						"Set it via user-secrets or environment variable.");
-			}
-
-			services.AddHttpClient<OllamaProvider>(client =>
-			{
-				client.BaseAddress = new Uri(opts.Ollama.BaseUrl);
-				client.Timeout = Timeout.InfiniteTimeSpan;
-			});
+			if (string.IsNullOrWhiteSpace(opts.Cloud.BaseUrl))
+				throw new InvalidOperationException("Assistant:Cloud:BaseUrl is empty.");
+			if (string.IsNullOrWhiteSpace(opts.Cloud.Model))
+				throw new InvalidOperationException("Assistant:Cloud:Model is empty.");
+			if (string.IsNullOrWhiteSpace(opts.Cloud.ApiKey))
+				throw new InvalidOperationException(
+					"Assistant:Cloud:ApiKey is empty. Set it via user-secrets or environment variable.");
 
 			services.AddHttpClient<OpenAiCompatibleProvider>(client =>
 			{
-				if (!string.IsNullOrWhiteSpace(opts.Cloud.BaseUrl))
-				{
-					var baseUrl = opts.Cloud.BaseUrl.EndsWith('/') ? opts.Cloud.BaseUrl : opts.Cloud.BaseUrl + "/";
-					client.BaseAddress = new Uri(baseUrl);
-				}
+				var baseUrl = opts.Cloud.BaseUrl.EndsWith('/') ? opts.Cloud.BaseUrl : opts.Cloud.BaseUrl + "/";
+				client.BaseAddress = new Uri(baseUrl);
 				if (!string.IsNullOrWhiteSpace(opts.Cloud.ApiKey))
 				{
 					client.DefaultRequestHeaders.Authorization =
@@ -107,7 +88,7 @@ public static class ServiceExtensions
 				client.Timeout = Timeout.InfiniteTimeSpan;
 			});
 
-			services.AddScoped<IChatProvider, CompositeChatProvider>();
+			services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OpenAiCompatibleProvider>());
 		}
 
 		public void AddApiCaching(IConfiguration config)
