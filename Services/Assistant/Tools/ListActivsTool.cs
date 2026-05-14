@@ -4,7 +4,7 @@ using CrmWebApi.DTOs.Activ;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class ListActivsTool(IActivService activService) : IAssistantTool
+public sealed class ListActivsTool(IAssistantCrmReadPort crm) : IAssistantTool
 {
 	public string Name => "list_activs";
 
@@ -47,7 +47,7 @@ public sealed class ListActivsTool(IActivService activService) : IAssistantTool
 			IncludeTotal = false,
 		};
 
-		var result = await activService.GetAllAsync(query);
+		var result = await crm.ListActivsAsync(query);
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 

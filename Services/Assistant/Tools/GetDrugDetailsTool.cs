@@ -1,9 +1,8 @@
 using System.Text.Json;
-using CrmWebApi.Services;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class GetDrugDetailsTool(IDrugService drugService) : IAssistantTool
+public sealed class GetDrugDetailsTool(IAssistantCrmReadPort crm) : IAssistantTool
 {
 	public string Name => "get_drug_details";
 
@@ -25,7 +24,7 @@ public sealed class GetDrugDetailsTool(IDrugService drugService) : IAssistantToo
 		if (!arguments.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number)
 			return ToolExecutionResult.Error("Параметр 'id' обязателен");
 
-		var result = await drugService.GetByIdAsync(idEl.GetInt32());
+		var result = await crm.GetDrugAsync(idEl.GetInt32());
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 

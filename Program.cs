@@ -18,7 +18,7 @@ builder
 	.AddCheck<CrmWebApi.Health.SmtpHealthCheck>("smtp", tags: ["mail"]);
 
 builder.Services.AddRepositories();
-builder.Services.AddAssistant(builder.Configuration);
+builder.Services.AddAssistantFeature(builder.Configuration);
 builder.Services.AddJwt(builder.Configuration);
 builder.Services.AddAuthorization();
 

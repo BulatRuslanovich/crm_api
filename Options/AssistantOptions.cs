@@ -4,6 +4,7 @@ public sealed class AssistantOptions
 {
 	public const string SectionName = "Assistant";
 
+	public bool Enabled { get; init; }
 	public string UiGuidePath { get; init; } = string.Empty;
 	public CloudSection Cloud { get; init; } = new();
 	public LimitsSection Limits { get; init; } = new();

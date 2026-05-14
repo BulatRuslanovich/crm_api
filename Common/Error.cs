@@ -20,4 +20,6 @@ public sealed record Error(
 	) => new(message, ErrorType.Forbidden, ext);
 
 	public static Error Validation(string message) => new(message, ErrorType.Validation);
+
+	public static Error Unavailable(string message) => new(message, ErrorType.Unavailable);
 }

@@ -20,7 +20,7 @@ public sealed class AssistantService(
 	IEnumerable<IAssistantTool> tools,
 	IOptions<AssistantOptions> options,
 	IAssistantActionStore actionStore,
-	IActivService activService,
+	IAssistantCrmWritePort crmWritePort,
 	ILogger<AssistantService> logger
 ) : IAssistantService
 {
@@ -325,7 +325,7 @@ public sealed class AssistantService(
 				}
 				if (req is null) return Error.Failure("Пустой черновик");
 
-				var result = await activService.CreateAsync(req);
+				var result = await crmWritePort.CreateActivAsync(req);
 				if (!result.IsSuccess) return result.Error!;
 				return Result<object>.Success(result.Value!);
 			}

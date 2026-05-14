@@ -1,9 +1,8 @@
 using System.Text.Json;
-using CrmWebApi.Services;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class GetOrgDetailsTool(IOrgService orgService) : IAssistantTool
+public sealed class GetOrgDetailsTool(IAssistantCrmReadPort crm) : IAssistantTool
 {
 	public string Name => "get_org_details";
 
@@ -25,7 +24,7 @@ public sealed class GetOrgDetailsTool(IOrgService orgService) : IAssistantTool
 		if (!arguments.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number)
 			return ToolExecutionResult.Error("Параметр 'id' обязателен");
 
-		var result = await orgService.GetByIdAsync(idEl.GetInt32());
+		var result = await crm.GetOrgAsync(idEl.GetInt32());
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 

@@ -1,9 +1,8 @@
 using System.Text.Json;
-using CrmWebApi.Services;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class SearchPhysesTool(IPhysService physService) : IAssistantTool
+public sealed class SearchPhysesTool(IAssistantCrmReadPort crm) : IAssistantTool
 {
 	public string Name => "search_physes";
 
@@ -28,7 +27,7 @@ public sealed class SearchPhysesTool(IPhysService physService) : IAssistantTool
 			? Math.Clamp(l.GetInt32(), 1, 50)
 			: 10;
 
-		var result = await physService.GetAllAsync(1, limit, query, includeTotal: false);
+		var result = await crm.SearchPhysesAsync(query, limit);
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 

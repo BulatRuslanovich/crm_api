@@ -48,27 +48,20 @@ public static class ServiceExtensions
 			services.AddScoped<IPhysService, PhysService>();
 			services.AddScoped<IActivService, ActivService>();
 			services.AddScoped<IDepartmentService, DepartmentService>();
-
-			services.AddScoped<IAssistantTool, SearchDrugsTool>();
-			services.AddScoped<IAssistantTool, SearchPhysesTool>();
-			services.AddScoped<IAssistantTool, SearchOrgsTool>();
-			services.AddScoped<IAssistantTool, GetDrugDetailsTool>();
-			services.AddScoped<IAssistantTool, GetPhysDetailsTool>();
-			services.AddScoped<IAssistantTool, GetOrgDetailsTool>();
-			services.AddScoped<IAssistantTool, ListActivsTool>();
-			services.AddScoped<IAssistantTool, GetActivDetailsTool>();
-			services.AddScoped<IAssistantTool, ProposeCreateActivTool>();
-			services.AddScoped<IAssistantTool, SearchUiHelpTool>();
-			services.AddSingleton<IAssistantActionStore, InMemoryAssistantActionStore>();
-			services.AddScoped<IAssistantService, AssistantService>();
 		}
 
-		public void AddAssistant(IConfiguration config)
+		public void AddAssistantFeature(IConfiguration config)
 		{
 			var section = config.GetSection(AssistantOptions.SectionName);
 			services.AddOptions<AssistantOptions>().Bind(section);
 
 			var opts = section.Get<AssistantOptions>() ?? new AssistantOptions();
+			if (!opts.Enabled)
+			{
+				services.AddScoped<IAssistantService, DisabledAssistantService>();
+				return;
+			}
+
 			if (string.IsNullOrWhiteSpace(opts.Cloud.BaseUrl))
 				throw new InvalidOperationException("Assistant:Cloud:BaseUrl is empty.");
 			if (string.IsNullOrWhiteSpace(opts.Cloud.Model))
@@ -90,6 +83,20 @@ public static class ServiceExtensions
 			});
 
 			services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OpenAiCompatibleProvider>());
+			services.AddScoped<IAssistantCrmReadPort, AssistantCrmPort>();
+			services.AddScoped<IAssistantCrmWritePort, AssistantCrmPort>();
+			services.AddScoped<IAssistantTool, SearchDrugsTool>();
+			services.AddScoped<IAssistantTool, SearchPhysesTool>();
+			services.AddScoped<IAssistantTool, SearchOrgsTool>();
+			services.AddScoped<IAssistantTool, GetDrugDetailsTool>();
+			services.AddScoped<IAssistantTool, GetPhysDetailsTool>();
+			services.AddScoped<IAssistantTool, GetOrgDetailsTool>();
+			services.AddScoped<IAssistantTool, ListActivsTool>();
+			services.AddScoped<IAssistantTool, GetActivDetailsTool>();
+			services.AddScoped<IAssistantTool, ProposeCreateActivTool>();
+			services.AddScoped<IAssistantTool, SearchUiHelpTool>();
+			services.AddSingleton<IAssistantActionStore, InMemoryAssistantActionStore>();
+			services.AddScoped<IAssistantService, AssistantService>();
 		}
 
 		public void AddApiCaching(IConfiguration config)

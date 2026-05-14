@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class GetActivDetailsTool(IActivService activService) : IAssistantTool
+public sealed class GetActivDetailsTool(IAssistantCrmReadPort crm) : IAssistantTool
 {
 	public string Name => "get_activ_details";
 
@@ -25,7 +25,7 @@ public sealed class GetActivDetailsTool(IActivService activService) : IAssistant
 		if (!arguments.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number)
 			return ToolExecutionResult.Error("Параметр 'id' обязателен");
 
-		var result = await activService.GetByIdAsync(idEl.GetInt32());
+		var result = await crm.GetActivAsync(idEl.GetInt32());
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 

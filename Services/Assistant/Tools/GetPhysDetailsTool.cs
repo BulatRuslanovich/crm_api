@@ -1,9 +1,8 @@
 using System.Text.Json;
-using CrmWebApi.Services;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class GetPhysDetailsTool(IPhysService physService) : IAssistantTool
+public sealed class GetPhysDetailsTool(IAssistantCrmReadPort crm) : IAssistantTool
 {
 	public string Name => "get_phys_details";
 
@@ -25,7 +24,7 @@ public sealed class GetPhysDetailsTool(IPhysService physService) : IAssistantToo
 		if (!arguments.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number)
 			return ToolExecutionResult.Error("Параметр 'id' обязателен");
 
-		var result = await physService.GetByIdAsync(idEl.GetInt32());
+		var result = await crm.GetPhysAsync(idEl.GetInt32());
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 

@@ -1,9 +1,8 @@
 using System.Text.Json;
-using CrmWebApi.Services;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class SearchDrugsTool(IDrugService drugService) : IAssistantTool
+public sealed class SearchDrugsTool(IAssistantCrmReadPort crm) : IAssistantTool
 {
 	public string Name => "search_drugs";
 
@@ -28,7 +27,7 @@ public sealed class SearchDrugsTool(IDrugService drugService) : IAssistantTool
 			? Math.Clamp(l.GetInt32(), 1, 50)
 			: 10;
 
-		var result = await drugService.GetAllAsync(1, limit, query, includeTotal: false);
+		var result = await crm.SearchDrugsAsync(query, limit);
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 
