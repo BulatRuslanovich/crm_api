@@ -35,14 +35,10 @@ public class UsersController(IUserService service) : ApiController
 		[FromQuery] bool includeTotal = true
 	)
 	{
-		if (!TryGetScope(out var scope, out var forbid))
-			return forbid!;
-
 		return FromResult(
 			await service.GetAllAsync(
 				Math.Max(page, 1),
 				Math.Clamp(pageSize, 1, 1000),
-				scope,
 				includeTotal
 			)
 		);

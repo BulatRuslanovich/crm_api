@@ -13,7 +13,8 @@ public class UserService(
 	IUserRepository repo,
 	IAuthSessionService sessionService,
 	IPasswordHasher passwordHasher,
-	HybridCache cache
+	HybridCache cache,
+	ICurrentUserService currentUser
 ) : IUserService
 {
 	private static readonly string[] PolicyTags = ["policies"];
@@ -25,10 +26,12 @@ public class UserService(
 	public async Task<Result<PagedResponse<UserResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		Scope scope,
 		bool includeTotal = true
 	)
 	{
+		if (currentUser.Scope is not { } scope)
+			return Error.Forbidden("Доступ запрещён");
+
 		var query = repo.QueryForScope(scope);
 		var total = includeTotal ? await query.CountAsync() : 0;
 		var responses = await query
@@ -68,6 +71,7 @@ public class UserService(
 			UsrLastname = req.LastName,
 			UsrEmail = req.Email,
 			UsrLogin = req.Login,
+			IsEmailConfirmed = true,
 			UsrPasswordHash = passwordHasher.Hash(req.Password),
 		};
 		await repo.AddWithPoliciesAsync(user, req.PolicyIds.Distinct());

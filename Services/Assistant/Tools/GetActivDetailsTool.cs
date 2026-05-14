@@ -1,11 +1,9 @@
 using System.Globalization;
 using System.Text.Json;
-using CrmWebApi.Services;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class GetActivDetailsTool(IActivService activService, ICurrentUserService currentUser)
-	: IAssistantTool
+public sealed class GetActivDetailsTool(IActivService activService) : IAssistantTool
 {
 	public string Name => "get_activ_details";
 
@@ -24,13 +22,10 @@ public sealed class GetActivDetailsTool(IActivService activService, ICurrentUser
 
 	public async Task<ToolExecutionResult> ExecuteAsync(JsonElement arguments, CancellationToken ct)
 	{
-		if (currentUser.Scope is not { } scope)
-			return ToolExecutionResult.Error("Не удалось определить пользователя");
-
 		if (!arguments.TryGetProperty("id", out var idEl) || idEl.ValueKind != JsonValueKind.Number)
 			return ToolExecutionResult.Error("Параметр 'id' обязателен");
 
-		var result = await activService.GetByIdAsync(idEl.GetInt32(), scope);
+		var result = await activService.GetByIdAsync(idEl.GetInt32());
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 
@@ -53,6 +48,6 @@ public sealed class GetActivDetailsTool(IActivService activService, ICurrentUser
 		if (start is null) return null;
 		var s = start.Value.ToLocalTime().ToString("d MMMM yyyy, HH:mm", ru);
 		if (end is null) return s;
-		return $"{s} – {end.Value.ToLocalTime():HH:mm}";
+		return $"{s} - {end.Value.ToLocalTime():HH:mm}";
 	}
 }

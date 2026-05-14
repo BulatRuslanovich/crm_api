@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Activ;
 using CrmWebApi.Services;
@@ -16,9 +15,6 @@ public class ActivsController(IActivService service) : ApiController
 	[ProducesResponseType<PagedResponse<ActivResponse>>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetAll([FromQuery] ActivQuery query)
 	{
-		if (!TryGetScope(out var scope, out var forbid))
-			return forbid!;
-
 		if (query.DateFrom != null && query.DateTo != null && query.DateFrom > query.DateTo)
 		{
 			(query.DateTo, query.DateFrom) = (query.DateFrom, query.DateTo);
@@ -30,14 +26,14 @@ public class ActivsController(IActivService service) : ApiController
 		query.Page = Math.Max(query.Page, 1);
 		query.PageSize = realPageSize;
 
-		return FromResult(await service.GetAllAsync(query, scope));
+		return FromResult(await service.GetAllAsync(query));
 	}
 
 	[HttpGet("{id:int}")]
 	[EndpointSummary("Get activity by ID")]
 	[ProducesResponseType<ActivResponse>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> GetById(int id) =>
-		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.GetByIdAsync(id, scope).ConfigureAwait(false));
+		FromResult(await service.GetByIdAsync(id).ConfigureAwait(false));
 
 
 	[HttpPost]
@@ -45,12 +41,7 @@ public class ActivsController(IActivService service) : ApiController
 	[ProducesResponseType<ActivResponse>(StatusCodes.Status201Created)]
 	public async Task<IActionResult> Create([FromBody] CreateActivRequest req)
 	{
-		if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usrId))
-		{
-			return BadRequest();
-		}
-
-		var result = await service.CreateAsync(usrId, req).ConfigureAwait(false);
+		var result = await service.CreateAsync(req).ConfigureAwait(false);
 		return CreatedResult(result, nameof(GetById), new { id = result.Value?.ActivId });
 	}
 
@@ -58,27 +49,27 @@ public class ActivsController(IActivService service) : ApiController
 	[EndpointSummary("Update activity")]
 	[ProducesResponseType<ActivResponse>(StatusCodes.Status200OK)]
 	public async Task<IActionResult> Update(int id, [FromBody] UpdateActivRequest req) =>
-		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.UpdateAsync(id, req, scope).ConfigureAwait(false));
+		FromResult(await service.UpdateAsync(id, req).ConfigureAwait(false));
 
 
 	[HttpDelete("{id:int}")]
 	[EndpointSummary("Delete activity")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	public async Task<IActionResult> Delete(int id) =>
-		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.DeleteAsync(id, scope).ConfigureAwait(false));
+		FromResult(await service.DeleteAsync(id).ConfigureAwait(false));
 
 
 	[HttpPost("{activId:int}/drugs/{drugId:int}")]
 	[EndpointSummary("Link drug to activity")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	public async Task<IActionResult> LinkDrug(int activId, int drugId) =>
-		!TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.LinkDrugAsync(activId, drugId, scope).ConfigureAwait(false));
+		FromResult(await service.LinkDrugAsync(activId, drugId).ConfigureAwait(false));
 
 
 	[HttpDelete("{activId:int}/drugs/{drugId:int}")]
 	[EndpointSummary("Unlink drug from activity")]
 	[ProducesResponseType(StatusCodes.Status204NoContent)]
 	public async Task<IActionResult> UnlinkDrug(int activId, int drugId) =>
-		 !TryGetScope(out var scope, out var forbid) ? forbid! : FromResult(await service.UnlinkDrugAsync(activId, drugId, scope).ConfigureAwait((false)));
+		FromResult(await service.UnlinkDrugAsync(activId, drugId).ConfigureAwait(false));
 
 }

@@ -297,30 +297,30 @@ public class ApiTestFactory : WebApplicationFactory<Program>
 			),
 		];
 
-		public Task<Result<PagedResponse<ActivResponse>>> GetAllAsync(ActivQuery query, Scope scope) =>
+		public Task<Result<PagedResponse<ActivResponse>>> GetAllAsync(ActivQuery query) =>
 			Task.FromResult<Result<PagedResponse<ActivResponse>>>(
 				new PagedResponse<ActivResponse>(Activs, query.Page, query.PageSize, Activs.Count)
 			);
 
-		public Task<Result<ActivResponse>> GetByIdAsync(int id, Scope scope) =>
+		public Task<Result<ActivResponse>> GetByIdAsync(int id) =>
 			Task.FromResult(
 				Activs.FirstOrDefault(a => a.ActivId == id) is { } activ
 					? Result<ActivResponse>.Success(activ)
 					: Error.NotFound($"Активность {id} не найдена")
 			);
 
-		public Task<Result<ActivResponse>> CreateAsync(int usrId, CreateActivRequest req) =>
-			Task.FromResult<Result<ActivResponse>>(Activs[0] with { UsrId = usrId });
+		public Task<Result<ActivResponse>> CreateAsync(CreateActivRequest req) =>
+			Task.FromResult<Result<ActivResponse>>(Activs[0]);
 
-		public Task<Result<ActivResponse>> UpdateAsync(int id, UpdateActivRequest req, Scope scope) =>
-			GetByIdAsync(id, scope);
+		public Task<Result<ActivResponse>> UpdateAsync(int id, UpdateActivRequest req) =>
+			GetByIdAsync(id);
 
-		public Task<Result> DeleteAsync(int id, Scope scope) => Task.FromResult(Result.Success());
+		public Task<Result> DeleteAsync(int id) => Task.FromResult(Result.Success());
 
-		public Task<Result> LinkDrugAsync(int activId, int drugId, Scope scope) =>
+		public Task<Result> LinkDrugAsync(int activId, int drugId) =>
 			Task.FromResult(Result.Success());
 
-		public Task<Result> UnlinkDrugAsync(int activId, int drugId, Scope scope) =>
+		public Task<Result> UnlinkDrugAsync(int activId, int drugId) =>
 			Task.FromResult(Result.Success());
 	}
 
@@ -334,7 +334,6 @@ public class ApiTestFactory : WebApplicationFactory<Program>
 		public Task<Result<PagedResponse<UserResponse>>> GetAllAsync(
 			int page,
 			int pageSize,
-			Scope scope,
 			bool includeTotal = true
 		) =>
 			Task.FromResult<Result<PagedResponse<UserResponse>>>(

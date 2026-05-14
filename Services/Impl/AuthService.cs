@@ -86,7 +86,7 @@ public class AuthService(
 		user.IsEmailConfirmed = true;
 		await userRepo.UpdateAsync(user);
 
-		return await sessionService.IssueAsync(user);
+		return await sessionService.IssueAsync(user.UsrId);
 	}
 
 	public async Task<Result> ResendConfirmationAsync(string email)
@@ -138,7 +138,7 @@ public class AuthService(
 			);
 		}
 
-		return await sessionService.IssueAsync(user);
+		return await sessionService.IssueAsync(user.UsrId);
 	}
 
 	public Task<Result<AuthTokens>> RefreshAsync(string refreshToken) =>

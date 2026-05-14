@@ -40,20 +40,20 @@ public sealed class EmailOtpService(
 
 		token.AttemptCount++;
 
+		if (FixedTimeEquals(token.TokenHash, HashOtp(code)))
+		{
+			await DeleteAllAsync(usrId, purpose);
+			return Result.Success();
+		}
+
 		if (token.AttemptCount >= MaxOtpAttempts)
 		{
 			await DeleteAllAsync(usrId, purpose);
 			return Error.Validation("Слишком много попыток. Запросите новый код.");
 		}
 
-		if (!FixedTimeEquals(token.TokenHash, HashOtp(code)))
-		{
-			await emailTokenRepo.UpdateAsync(token);
-			return Error.Validation("Неверный или истёкший код");
-		}
-
-		await DeleteAllAsync(usrId, purpose);
-		return Result.Success();
+		await emailTokenRepo.UpdateAsync(token);
+		return Error.Validation("Неверный или истёкший код");
 	}
 
 	public Task DeleteAllAsync(int usrId, EmailOtpPurpose purpose) =>

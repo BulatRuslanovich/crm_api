@@ -1,18 +1,16 @@
 using System.Globalization;
 using System.Text.Json;
 using CrmWebApi.DTOs.Activ;
-using CrmWebApi.Services;
 
 namespace CrmWebApi.Services.Assistant.Tools;
 
-public sealed class ListActivsTool(IActivService activService, ICurrentUserService currentUser)
-	: IAssistantTool
+public sealed class ListActivsTool(IActivService activService) : IAssistantTool
 {
 	public string Name => "list_activs";
 
 	public string Description =>
 		"List activities (visits, meetings) visible to the current user. Filter by date range, statuses, free-text search. " +
-		"The user's access scope is applied automatically — never pass user ids. " +
+		"The user's access scope is applied automatically - never pass user ids. " +
 		"Dates must be ISO-8601 with timezone offset, e.g. 2026-05-10T00:00:00+03:00.";
 
 	public string ParametersJsonSchema => """
@@ -30,9 +28,6 @@ public sealed class ListActivsTool(IActivService activService, ICurrentUserServi
 
 	public async Task<ToolExecutionResult> ExecuteAsync(JsonElement arguments, CancellationToken ct)
 	{
-		if (currentUser.Scope is not { } scope)
-			return ToolExecutionResult.Error("Не удалось определить пользователя");
-
 		var from = TryGetDate(arguments, "from");
 		var to = TryGetDate(arguments, "to");
 		var search = arguments.TryGetProperty("search", out var s) ? s.GetString() : null;
@@ -52,7 +47,7 @@ public sealed class ListActivsTool(IActivService activService, ICurrentUserServi
 			IncludeTotal = false,
 		};
 
-		var result = await activService.GetAllAsync(query, scope);
+		var result = await activService.GetAllAsync(query);
 		if (!result.IsSuccess)
 			return ToolExecutionResult.Error(result.Error!.Message);
 
@@ -81,6 +76,6 @@ public sealed class ListActivsTool(IActivService activService, ICurrentUserServi
 		if (start is null) return null;
 		var s = start.Value.ToLocalTime().ToString("d MMMM, HH:mm", ru);
 		if (end is null) return s;
-		return $"{s} – {end.Value.ToLocalTime():HH:mm}";
+		return $"{s} - {end.Value.ToLocalTime():HH:mm}";
 	}
 }

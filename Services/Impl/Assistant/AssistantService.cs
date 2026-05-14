@@ -325,7 +325,7 @@ public sealed class AssistantService(
 				}
 				if (req is null) return Error.Failure("Пустой черновик");
 
-				var result = await activService.CreateAsync(usrId, req);
+				var result = await activService.CreateAsync(req);
 				if (!result.IsSuccess) return result.Error!;
 				return Result<object>.Success(result.Value!);
 			}

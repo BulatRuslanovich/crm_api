@@ -10,7 +10,6 @@ public interface IUserService
 	public Task<Result<PagedResponse<UserResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
-		Scope scope,
 		bool includeTotal = true
 	);
 	public Task<Result<UserResponse>> GetByIdAsync(int id);

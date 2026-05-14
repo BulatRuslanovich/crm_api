@@ -13,7 +13,13 @@ namespace CrmWebApi.Tests;
 public sealed class UserServiceTests
 {
 	private static UserService CreateService(InMemoryUserRepository repo) =>
-		new(repo, new NoopSessionService(), new PasswordHasher(), new NoopHybridCache());
+		new(
+			repo,
+			new NoopSessionService(),
+			new PasswordHasher(),
+			new NoopHybridCache(),
+			new FixedCurrentUserService(Scope.ForAll(1))
+		);
 
 	[Fact]
 	public async Task GetByIdAsync_ReturnsNotFound_WhenUserMissing()
@@ -50,6 +56,20 @@ public sealed class UserServiceTests
 
 		Assert.False(result.IsSuccess);
 		Assert.Equal(ErrorType.Conflict, result.Error!.Type);
+	}
+
+	[Fact]
+	public async Task CreateAsync_MarksAdminCreatedUserAsEmailConfirmed()
+	{
+		var repo = new InMemoryUserRepository([]);
+		var service = CreateService(repo);
+
+		var result = await service.CreateAsync(
+			new CreateUserRequest("Jane", "Doe", "jane@example.com", "jane", "password1", [])
+		);
+
+		Assert.True(result.IsSuccess);
+		Assert.True(repo.Users.Single().IsEmailConfirmed);
 	}
 
 	[Fact]
@@ -105,6 +125,8 @@ public sealed class UserServiceTests
 	{
 		private readonly List<Usr> _users = users.ToList();
 
+		public IReadOnlyList<Usr> Users => _users;
+
 		public IQueryable<Usr> QueryForScope(Scope scope) => QueryWithPolicies();
 
 		public IQueryable<Usr> QueryWithPolicies() =>
@@ -143,9 +165,14 @@ public sealed class UserServiceTests
 
 	private sealed class NoopSessionService : IAuthSessionService
 	{
-		public Task<AuthTokens> IssueAsync(Usr user) =>
-			Task.FromResult(new AuthTokens("access", "refresh",
-				new DTOs.User.UserResponse(user.UsrId, user.UsrFirstname, user.UsrLastname, user.UsrEmail, user.UsrLogin, [])));
+		public Task<Result<AuthTokens>> IssueAsync(int usrId) =>
+			Task.FromResult<Result<AuthTokens>>(
+				new AuthTokens(
+					"access",
+					"refresh",
+					new UserResponse(usrId, "Test", "User", "test@example.com", "test", [])
+				)
+			);
 
 		public Task<Result<AuthTokens>> RefreshAsync(string refreshToken) =>
 			Task.FromResult<Result<AuthTokens>>(Error.Unauthorized("noop"));
@@ -154,6 +181,13 @@ public sealed class UserServiceTests
 			Task.FromResult(Result.Success());
 
 		public Task RevokeAllForUserAsync(int usrId) => Task.CompletedTask;
+	}
+
+	private sealed class FixedCurrentUserService(Scope? scope) : ICurrentUserService
+	{
+		public int? UsrId => scope?.CurrentUsrId;
+
+		public Scope? Scope => scope;
 	}
 
 	private sealed class NoopHybridCache : HybridCache

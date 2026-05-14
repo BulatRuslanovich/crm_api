@@ -82,6 +82,39 @@ public sealed class EmailOtpServiceTests
 		Assert.Equal(0, repo.Count);
 	}
 
+	[Fact]
+	public async Task VerifyAsync_AllowsCorrectCodeOnFinalAttempt()
+	{
+		var repo = new InMemoryEmailTokenRepository();
+		var service = CreateService(repo);
+		var user = new Usr { UsrId = 13 };
+		var code = await service.CreateAsync(
+			user,
+			EmailOtpPurpose.EmailConfirmation,
+			TimeSpan.FromMinutes(5)
+		);
+
+		for (var attempt = 0; attempt < 4; attempt++)
+		{
+			var retryResult = await service.VerifyAsync(
+				user.UsrId,
+				"000000",
+				EmailOtpPurpose.EmailConfirmation
+			);
+			Assert.False(retryResult.IsSuccess);
+			Assert.Equal(1, repo.Count);
+		}
+
+		var finalResult = await service.VerifyAsync(
+			user.UsrId,
+			code!,
+			EmailOtpPurpose.EmailConfirmation
+		);
+
+		Assert.True(finalResult.IsSuccess);
+		Assert.Equal(0, repo.Count);
+	}
+
 	private static EmailOtpService CreateService(InMemoryEmailTokenRepository repo) =>
 		new(
 			repo,

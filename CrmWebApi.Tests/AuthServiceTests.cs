@@ -1,4 +1,6 @@
 using System.Linq.Expressions;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using CrmWebApi.Common;
@@ -42,6 +44,19 @@ public class AuthServiceTests
 	}
 
 	[Fact]
+	public async Task IssueAsync_LoadsPoliciesForAccessToken()
+	{
+		var user = TestUsers.UserWithRole(1, RoleNames.Admin);
+		var service = CreateSessionService([user], new InMemoryRefreshRepository());
+
+		var result = await service.IssueAsync(user.UsrId);
+
+		Assert.True(result.IsSuccess);
+		var jwt = new JwtSecurityTokenHandler().ReadJwtToken(result.Value!.AccessToken);
+		Assert.Contains(jwt.Claims, c => c.Type == ClaimTypes.Role && c.Value == RoleNames.Admin);
+	}
+
+	[Fact]
 	public async Task ResetPasswordAsync_ReturnsSuccessForUnknownEmail()
 	{
 		// Arrange: no user exists with the requested email.
@@ -73,12 +88,7 @@ public class AuthServiceTests
 		var authOptions = Microsoft.Extensions.Options.Options.Create(
 			new AuthOptions { OtpHashSecret = "otp-secret-with-more-than-32-characters" }
 		);
-		var sessionService = new AuthSessionService(
-			userRepository,
-			refreshRepository,
-			jwtOptions,
-			NullLogger<AuthSessionService>.Instance
-		);
+		var sessionService = CreateSessionService(userRepository, refreshRepository, jwtOptions);
 		var emailOtpService = new EmailOtpService(
 			new InMemoryEmailTokenRepository(),
 			jwtOptions,
@@ -95,6 +105,35 @@ public class AuthServiceTests
 			NullLogger<AuthService>.Instance
 		);
 	}
+
+	private static AuthSessionService CreateSessionService(
+		IEnumerable<Usr> users,
+		IRefreshRepository refreshRepository
+	) =>
+		CreateSessionService(
+			new InMemoryUserRepository(users),
+			refreshRepository,
+			Microsoft.Extensions.Options.Options.Create(
+				new JwtOptions
+				{
+					Secret = "test-secret-with-more-than-32-characters",
+					Issuer = "issuer",
+					Audience = "audience",
+				}
+			)
+		);
+
+	private static AuthSessionService CreateSessionService(
+		IUserRepository userRepository,
+		IRefreshRepository refreshRepository,
+		Microsoft.Extensions.Options.IOptions<JwtOptions> jwtOptions
+	) =>
+		new(
+			userRepository,
+			refreshRepository,
+			jwtOptions,
+			NullLogger<AuthSessionService>.Instance
+		);
 
 	private static string Sha256(string value)
 	{

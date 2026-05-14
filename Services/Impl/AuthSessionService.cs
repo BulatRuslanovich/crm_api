@@ -21,8 +21,16 @@ public sealed class AuthSessionService(
 	ILogger<AuthSessionService> logger
 ) : IAuthSessionService
 {
-	// WARNING: User should be with policies included
-	public async Task<AuthTokens> IssueAsync(Usr user)
+	public async Task<Result<AuthTokens>> IssueAsync(int usrId)
+	{
+		var user = await userRepo.QueryWithPolicies().FirstOrDefaultAsync(u => u.UsrId == usrId);
+		if (user is null)
+			return Error.Unauthorized("Пользователь не найден или удалён");
+
+		return await IssueForUserAsync(user);
+	}
+
+	private async Task<AuthTokens> IssueForUserAsync(Usr user)
 	{
 		var accessToken = GenerateAccessToken(user);
 		var (raw, stored) = GenerateRefreshToken(user.UsrId);
@@ -48,7 +56,7 @@ public sealed class AuthSessionService(
 		if (user is null)
 			return Error.Unauthorized("Пользователь не найден или удалён");
 
-		return await IssueAsync(user);
+		return await IssueForUserAsync(user);
 	}
 
 	public async Task<Result> LogoutAsync(string refreshToken)
