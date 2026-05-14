@@ -5,19 +5,12 @@ using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Phys;
 using CrmWebApi.DTOs.Spec;
 using CrmWebApi.Repositories;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
-public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService audit, AppDbContext db)
+public class PhysService(IPhysRepository repo, IAuditService audit, AppDbContext db)
 	: IPhysService
 {
-	private static readonly string[] SpecTags = ["specs"];
-	private static readonly HybridCacheEntryOptions RefOptions = new()
-	{
-		Expiration = TimeSpan.FromMinutes(10),
-	};
-
 	public async Task<Result<PagedResponse<PhysResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
@@ -109,14 +102,7 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 	}
 
 	public async Task<Result<IEnumerable<SpecResponse>>> GetAllSpecsAsync() =>
-		Result<IEnumerable<SpecResponse>>.Success(
-			await cache.GetOrCreateAsync(
-				"specs",
-				async ct => (IEnumerable<SpecResponse>)await repo.GetSpecsAsync(ct),
-				RefOptions,
-				SpecTags
-			)
-		);
+		Result<IEnumerable<SpecResponse>>.Success(await repo.GetSpecsAsync());
 
 	public async Task<Result<SpecResponse>> GetSpecByIdAsync(int id)
 	{
@@ -127,7 +113,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 	public async Task<Result<SpecResponse>> CreateSpecAsync(CreateSpecRequest req)
 	{
 		var spec = await repo.AddSpecAsync(new Spec { SpecName = req.SpecName });
-		await cache.RemoveByTagAsync("specs");
 		return new SpecResponse(spec.SpecId, spec.SpecName);
 	}
 
@@ -136,7 +121,6 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 		var found = await repo.SoftDeleteSpecAsync(id);
 		if (!found)
 			return Error.NotFound($"Специальность {id} не найдена");
-		await cache.RemoveByTagAsync("specs");
 		return Result.Success();
 	}
 }

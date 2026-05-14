@@ -7,7 +7,6 @@ using CrmWebApi.DTOs.User;
 using CrmWebApi.Repositories;
 using CrmWebApi.Services;
 using CrmWebApi.Services.Impl;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Tests;
 
@@ -18,7 +17,6 @@ public sealed class UserServiceTests
 			repo,
 			new NoopSessionService(),
 			new PasswordHasher(),
-			new NoopHybridCache(),
 			new FixedCurrentUserService(Scope.ForAll(1))
 		);
 
@@ -234,29 +232,4 @@ public sealed class UserServiceTests
 		public Scope? Scope => scope;
 	}
 
-	private sealed class NoopHybridCache : HybridCache
-	{
-		public override ValueTask<T> GetOrCreateAsync<TState, T>(
-			string key,
-			TState state,
-			Func<TState, CancellationToken, ValueTask<T>> factory,
-			HybridCacheEntryOptions? options = null,
-			IEnumerable<string>? tags = null,
-			CancellationToken cancellationToken = default
-		) => factory(state, cancellationToken);
-
-		public override ValueTask SetAsync<T>(
-			string key,
-			T value,
-			HybridCacheEntryOptions? options = null,
-			IEnumerable<string>? tags = null,
-			CancellationToken cancellationToken = default
-		) => ValueTask.CompletedTask;
-
-		public override ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default) =>
-			ValueTask.CompletedTask;
-
-		public override ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default) =>
-			ValueTask.CompletedTask;
-	}
 }

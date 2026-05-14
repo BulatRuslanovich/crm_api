@@ -18,7 +18,7 @@
 ## Требования
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) (SDK версии ≥ 10.0.100)
-- [Docker](https://docs.docker.com/get-docker/) — для PostgreSQL; Redis поднимается production compose
+- [Docker](https://docs.docker.com/get-docker/) — для PostgreSQL
 
 Проверить SDK:
 
@@ -59,12 +59,6 @@ Postgres слушает `localhost:5432`. SQL-скрипты из папки [`s
 | User | `crm_user` |
 | Password | значение `DB_PASSWORD` из `.env.local` |
 
-Redis не обязателен: без `Cache:RedisConnectionString` используется in-memory HybridCache. Если нужен — поднимите `redis` тем же compose:
-
-```bash
-docker compose --env-file .env.local -f compose.demo.yml up -d db redis
-```
-
 **Сброс БД** (полностью удалит данные):
 
 ```bash
@@ -97,7 +91,6 @@ dotnet user-secrets set "Email:FromAddress" "<адрес отправителя>
 > - `Jwt:Secret` обязателен и должен быть **минимум 32 символа**.
 > - `Auth:OtpHashSecret` опционален; если не задан, OTP-хэши подписываются `Jwt:Secret`.
 > - `Email:Username`, `Email:Password`, `Email:FromAddress` нужны только если тестируете OTP-флоу (регистрация, сброс пароля). Без них приложение стартует, но email-эндпоинты вернут 500.
-> - `Cache:RedisConnectionString` опционален для локальной разработки.
 
 Посмотреть / очистить:
 

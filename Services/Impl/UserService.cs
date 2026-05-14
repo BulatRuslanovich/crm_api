@@ -4,7 +4,6 @@ using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Policy;
 using CrmWebApi.DTOs.User;
 using CrmWebApi.Repositories;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
@@ -12,16 +11,9 @@ public class UserService(
 	IUserRepository repo,
 	IAuthSessionService sessionService,
 	IPasswordHasher passwordHasher,
-	HybridCache cache,
 	ICurrentUserService currentUser
 ) : IUserService
 {
-	private static readonly string[] PolicyTags = ["policies"];
-	private static readonly HybridCacheEntryOptions RefOptions = new()
-	{
-		Expiration = TimeSpan.FromMinutes(10),
-	};
-
 	public async Task<Result<PagedResponse<UserResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
@@ -107,14 +99,7 @@ public class UserService(
 	}
 
 	public async Task<Result<IEnumerable<PolicyResponse>>> GetAllPoliciesAsync() =>
-		Result<IEnumerable<PolicyResponse>>.Success(
-			await cache.GetOrCreateAsync(
-				"policies",
-				async ct => (IEnumerable<PolicyResponse>)await repo.GetPoliciesAsync(ct),
-				RefOptions,
-				PolicyTags
-			)
-		);
+		Result<IEnumerable<PolicyResponse>>.Success(await repo.GetPoliciesAsync());
 
 	public async Task<Result<PolicyResponse>> GetPolicyByIdAsync(int id)
 	{

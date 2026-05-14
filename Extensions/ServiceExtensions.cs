@@ -12,7 +12,6 @@ using CrmWebApi.Services.Impl;
 using CrmWebApi.Services.Impl.Assistant;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CrmWebApi.Extensions;
@@ -99,24 +98,6 @@ public static class ServiceExtensions
 			services.AddScoped<IAssistantService, AssistantService>();
 		}
 
-		public void AddApiCaching(IConfiguration config)
-		{
-			var cacheOptions = config.GetSection(CacheOptions.SectionName).Get<CacheOptions>() ?? new();
-			if (!string.IsNullOrWhiteSpace(cacheOptions.RedisConnectionString))
-			{
-				services.AddStackExchangeRedisCache(opt =>
-				{
-					opt.Configuration = cacheOptions.RedisConnectionString;
-					opt.InstanceName = "crm-api:";
-				});
-			}
-
-			services.AddHybridCache(opt =>
-			{
-				opt.DefaultEntryOptions = new HybridCacheEntryOptions { Expiration = TimeSpan.FromMinutes(1) };
-			});
-		}
-
 		public void AddApiOptions(IConfiguration config)
 		{
 			services
@@ -147,7 +128,6 @@ public static class ServiceExtensions
 				.ValidateOnStart();
 
 			services.AddOptions<EmailOptions>().Bind(config.GetSection(EmailOptions.SectionName));
-			services.AddOptions<CacheOptions>().Bind(config.GetSection(CacheOptions.SectionName));
 			services
 				.AddOptions<ApiForwardedHeadersOptions>()
 				.Bind(config.GetSection(ApiForwardedHeadersOptions.SectionName))

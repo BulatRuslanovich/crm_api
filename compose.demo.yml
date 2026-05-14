@@ -21,13 +21,6 @@ services:
 #    networks:
 #      - internal
 
-#  redis:
-#    image: redis:7-alpine
-#    restart: unless-stopped
-#    command: ["redis-server", "--appendonly", "no", "--save", ""]
-#    networks:
-#      - internal
-#
 #  api:
 #    build:
 #      context: .
@@ -46,7 +39,6 @@ services:
 #      Jwt__Audience: PharmaCrmClient
 #      Auth__RequireEmailConfirmation: "false"
 #      Auth__OtpHashSecret: ${OTP_HASH_SECRET:?OTP_HASH_SECRET is required in .env.local}
-#      Cache__RedisConnectionString: redis:6379,abortConnect=false
 #      ForwardedHeaders__KnownProxies__0: 127.0.0.1
 #      ForwardedHeaders__KnownProxies__1: 172.28.0.10
 #      Assistant__Cloud__BaseUrl: ${DEEPSEEK_BASE_URL:-https://llms.dotpoin.com/v1}

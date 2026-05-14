@@ -5,7 +5,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseApiSerilog();
 
-builder.Services.AddApiCaching(builder.Configuration);
 builder.Services.AddApiControllers();
 builder.Services.AddServices();
 builder.Services.AddApiOptions(builder.Configuration);

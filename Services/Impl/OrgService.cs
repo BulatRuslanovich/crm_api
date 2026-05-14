@@ -6,19 +6,12 @@ using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Org;
 using CrmWebApi.DTOs.OrgType;
 using CrmWebApi.Repositories;
-using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
 
-public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService audit, AppDbContext db)
+public class OrgService(IOrgRepository repo, IAuditService audit, AppDbContext db)
 	: IOrgService
 {
-	private static readonly string[] TypeTags = ["org-types"];
-	private static readonly HybridCacheEntryOptions RefOptions = new()
-	{
-		Expiration = TimeSpan.FromMinutes(10),
-	};
-
 	public async Task<Result<PagedResponse<OrgResponse>>> GetAllAsync(
 		int page,
 		int pageSize,
@@ -96,12 +89,5 @@ public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService au
 	}
 
 	public async Task<Result<IEnumerable<OrgTypeResponse>>> GetAllTypesAsync() =>
-		Result<IEnumerable<OrgTypeResponse>>.Success(
-			await cache.GetOrCreateAsync(
-				"org-types",
-				async ct => (IEnumerable<OrgTypeResponse>)await repo.GetOrgTypesAsync(ct),
-				RefOptions,
-				TypeTags
-			)
-		);
+		Result<IEnumerable<OrgTypeResponse>>.Success(await repo.GetOrgTypesAsync());
 }
