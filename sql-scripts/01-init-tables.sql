@@ -227,3 +227,44 @@ INSERT INTO usr (usr_firstname, usr_lastname, usr_email, usr_login, usr_password
 
 INSERT INTO usr_policy (usr_id, policy_id) VALUES
     (1, 1); 
+
+
+CREATE TABLE assistant_conversation (
+    conversation_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usr_id          INT NOT NULL REFERENCES usr(usr_id) ON DELETE CASCADE,
+    title           VARCHAR(255),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE assistant_message (
+    message_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    conversation_id BIGINT NOT NULL REFERENCES assistant_conversation(conversation_id) ON DELETE CASCADE,
+    role            VARCHAR(20) NOT NULL,
+    content         TEXT NOT NULL,
+    tool_calls      TEXT,
+    tool_call_id    VARCHAR(128),
+    provider        VARCHAR(64),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_assistant_message_role CHECK (role IN ('user', 'assistant', 'tool', 'system'))
+);
+
+CREATE INDEX ix_assistant_conversation_usr_updated
+    ON assistant_conversation(usr_id, updated_at DESC);
+
+CREATE INDEX ix_assistant_message_conversation_created
+    ON assistant_message(conversation_id, created_at);
+
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX ix_drug_name_trgm  ON drug USING GIN (drug_name  gin_trgm_ops);
+CREATE INDEX ix_drug_brand_trgm ON drug USING GIN (drug_brand gin_trgm_ops);
+
+CREATE INDEX ix_phys_firstname_trgm  ON phys USING GIN (phys_firstname  gin_trgm_ops);
+CREATE INDEX ix_phys_lastname_trgm   ON phys USING GIN (phys_lastname   gin_trgm_ops);
+CREATE INDEX ix_phys_middlename_trgm ON phys USING GIN (phys_middlename gin_trgm_ops)
+    WHERE phys_middlename IS NOT NULL;
+
+CREATE INDEX ix_org_name_trgm    ON org USING GIN (org_name    gin_trgm_ops);
+CREATE INDEX ix_org_address_trgm ON org USING GIN (org_address gin_trgm_ops);
