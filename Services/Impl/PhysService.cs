@@ -2,11 +2,9 @@ using CrmWebApi.Common;
 using CrmWebApi.Data;
 using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs;
-using CrmWebApi.DTOs.Org;
 using CrmWebApi.DTOs.Phys;
 using CrmWebApi.DTOs.Spec;
 using CrmWebApi.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
@@ -25,94 +23,12 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 		int pageSize,
 		string? search = null,
 		bool includeTotal = true
-	)
-	{
-		var query = repo.QueryHard();
-
-		if (!string.IsNullOrEmpty(search))
-		{
-			var pattern = "%" + search + "%";
-			const double threshold = 0.3;
-
-			query = query.Where(p =>
-				EF.Functions.ILike(p.PhysFirstname, pattern)
-				|| EF.Functions.ILike(p.PhysLastname, pattern)
-				|| EF.Functions.ILike(p.PhysMiddlename ?? "", pattern)
-				|| EF.Functions.TrigramsSimilarity(p.PhysFirstname, search) > threshold
-				|| EF.Functions.TrigramsSimilarity(p.PhysLastname, search) > threshold
-				|| EF.Functions.TrigramsSimilarity(p.PhysMiddlename ?? "", search) > threshold
-			);
-		}
-
-		var total = includeTotal ? await query.CountAsync() : 0;
-		var ordered = string.IsNullOrEmpty(search)
-			? query.OrderBy(p => p.PhysId)
-			: query
-				.OrderByDescending(p =>
-					EF.Functions.TrigramsSimilarity(p.PhysLastname, search) >
-					EF.Functions.TrigramsSimilarity(p.PhysFirstname, search)
-						? EF.Functions.TrigramsSimilarity(p.PhysLastname, search)
-						: EF.Functions.TrigramsSimilarity(p.PhysFirstname, search))
-				.ThenBy(p => p.PhysId);
-
-		var items = await ordered
-			.Skip((page - 1) * pageSize)
-			.Take(pageSize)
-			.Select(p => new PhysResponse(
-				p.PhysId,
-				p.SpecId,
-				p.Spec.SpecName,
-				p.PhysFirstname,
-				p.PhysLastname,
-				p.PhysMiddlename,
-				p.PhysPhone,
-				p.PhysEmail,
-				p.PhysOrgs.Select(po => new OrgResponse(
-						po.OrgId,
-						0,
-						"-",
-						po.Org.OrgName,
-						"-",
-						null,
-						null,
-						"-"
-					))
-					.ToList()
-			))
-			.ToListAsync();
-
-		return new PagedResponse<PhysResponse>(items, page, pageSize, total);
-	}
+	) => await repo.GetPagedAsync(page, pageSize, search, includeTotal);
 
 	public async Task<Result<PhysResponse>> GetByIdAsync(int id)
 	{
-		var phys = await repo.QueryHard()
-			.Where(p => p.PhysId == id)
-			.Select(p => new PhysResponse(
-				p.PhysId,
-				p.SpecId,
-				p.Spec.SpecName,
-				p.PhysFirstname,
-				p.PhysLastname,
-				p.PhysMiddlename,
-				p.PhysPhone,
-				p.PhysEmail,
-				p.PhysOrgs.Select(po => new OrgResponse(
-						po.OrgId,
-						0,
-						"-",
-						po.Org.OrgName,
-						"-",
-						null,
-						null,
-						"-"
-					))
-					.ToList()
-			))
-			.FirstOrDefaultAsync();
-		if (phys is null)
-			return Error.NotFound($"Физическое лицо {id} не найдено");
-		return phys;
+		var phys = await repo.GetResponseByIdAsync(id);
+		return phys is null ? Error.NotFound($"Физическое лицо {id} не найдено") : phys;
 	}
 
 	public async Task<Result<PhysResponse>> CreateAsync(CreatePhysRequest req)
@@ -137,19 +53,7 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 
 	public async Task<Result<PhysResponse>> UpdateAsync(int id, UpdatePhysRequest req)
 	{
-		var old = await repo.QueryLite()
-			.Where(p => p.PhysId == id)
-			.Select(p => new
-			{
-				p.SpecId,
-				p.PhysFirstname,
-				p.PhysLastname,
-				p.PhysMiddlename,
-				p.PhysPhone,
-				p.PhysEmail,
-			})
-			.FirstOrDefaultAsync();
-
+		var old = await repo.GetAuditSnapshotAsync(id);
 		if (old is null)
 			return Error.NotFound($"Физическое лицо {id} не найдено");
 
@@ -170,16 +74,7 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 		if (diffs.Count > 0)
 		{
 			await using var tx = await db.Database.BeginTransactionAsync();
-			await repo.QueryLite()
-				.Where(p => p.PhysId == id)
-				.ExecuteUpdateAsync(s => s
-					.SetProperty(p => p.SpecId, p => req.SpecId ?? p.SpecId)
-					.SetProperty(p => p.PhysFirstname, p => req.FirstName ?? p.PhysFirstname)
-					.SetProperty(p => p.PhysLastname, p => req.LastName ?? p.PhysLastname)
-					.SetProperty(p => p.PhysMiddlename, p => req.MiddleName ?? p.PhysMiddlename)
-					.SetProperty(p => p.PhysPhone, p => req.Phone ?? p.PhysPhone)
-					.SetProperty(p => p.PhysEmail, p => req.Email ?? p.PhysEmail));
-
+			await repo.UpdateAsync(id, req);
 			await audit.LogUpdateAsync(AuditEntityType.Phys, id, diffs);
 			await tx.CommitAsync();
 		}
@@ -190,10 +85,7 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 	public async Task<Result> DeleteAsync(int id)
 	{
 		await using var tx = await db.Database.BeginTransactionAsync();
-		var affected = await repo.QueryLite()
-		.Where(a => a.PhysId == id)
-		 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
-
+		var affected = await repo.SoftDeleteAsync(id);
 		if (affected == 0)
 			return Error.NotFound($"Физическое лицо {id} не найдено");
 
@@ -220,11 +112,7 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 		Result<IEnumerable<SpecResponse>>.Success(
 			await cache.GetOrCreateAsync(
 				"specs",
-				async ct =>
-					(IEnumerable<SpecResponse>)
-						await repo.QuerySpecs()
-							.Select(s => new SpecResponse(s.SpecId, s.SpecName))
-							.ToListAsync(ct),
+				async ct => (IEnumerable<SpecResponse>)await repo.GetSpecsAsync(ct),
 				RefOptions,
 				SpecTags
 			)
@@ -232,10 +120,8 @@ public class PhysService(IPhysRepository repo, HybridCache cache, IAuditService 
 
 	public async Task<Result<SpecResponse>> GetSpecByIdAsync(int id)
 	{
-		var spec = await repo.QuerySpecs().FirstOrDefaultAsync(s => s.SpecId == id);
-		if (spec is null)
-			return Error.NotFound($"Специальность {id} не найдена");
-		return new SpecResponse(spec.SpecId, spec.SpecName);
+		var spec = await repo.GetSpecByIdAsync(id);
+		return spec is null ? Error.NotFound($"Специальность {id} не найдена") : spec;
 	}
 
 	public async Task<Result<SpecResponse>> CreateSpecAsync(CreateSpecRequest req)

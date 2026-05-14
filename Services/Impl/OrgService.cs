@@ -6,7 +6,6 @@ using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Org;
 using CrmWebApi.DTOs.OrgType;
 using CrmWebApi.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
@@ -25,69 +24,12 @@ public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService au
 		int pageSize,
 		string? search = null,
 		bool includeTotal = true
-	)
-	{
-		var query = repo.QueryHard();
-
-		if (!string.IsNullOrEmpty(search))
-		{
-			var pattern = "%" + search + "%";
-			const double threshold = 0.3;
-
-			query = query.Where(o =>
-				EF.Functions.ILike(o.OrgName, pattern)
-				|| EF.Functions.ILike(o.OrgAddress, pattern)
-				|| EF.Functions.TrigramsSimilarity(o.OrgName, search) > threshold
-				|| EF.Functions.TrigramsSimilarity(o.OrgAddress, search) > threshold
-			);
-		}
-
-		var total = includeTotal ? await query.CountAsync() : 0;
-		var ordered = string.IsNullOrEmpty(search)
-			? query.OrderBy(o => o.OrgId)
-			: query
-				.OrderByDescending(o =>
-					EF.Functions.TrigramsSimilarity(o.OrgName, search) >
-					EF.Functions.TrigramsSimilarity(o.OrgAddress, search)
-						? EF.Functions.TrigramsSimilarity(o.OrgName, search)
-						: EF.Functions.TrigramsSimilarity(o.OrgAddress, search))
-				.ThenBy(o => o.OrgId);
-
-		var items = await ordered
-			.Skip((page - 1) * pageSize)
-			.Take(pageSize)
-			.Select(o => new OrgResponse(
-				o.OrgId,
-				o.OrgTypeId,
-				o.OrgType.OrgTypeName,
-				o.OrgName,
-				o.OrgInn,
-				o.OrgLatitude,
-				o.OrgLongitude,
-				o.OrgAddress
-			))
-			.ToListAsync();
-		return new PagedResponse<OrgResponse>(items, page, pageSize, total);
-	}
+	) => await repo.GetPagedAsync(page, pageSize, search, includeTotal);
 
 	public async Task<Result<OrgResponse>> GetByIdAsync(int id)
 	{
-		var org = await repo.QueryHard()
-			.Where(o => o.OrgId == id)
-			.Select(o => new OrgResponse(
-				o.OrgId,
-				o.OrgTypeId,
-				o.OrgType.OrgTypeName,
-				o.OrgName,
-				o.OrgInn,
-				o.OrgLatitude,
-				o.OrgLongitude,
-				o.OrgAddress
-			))
-			.FirstOrDefaultAsync();
-		if (org is null)
-			return Error.NotFound($"Организация {id} не найдена");
-		return org;
+		var org = await repo.GetResponseByIdAsync(id);
+		return org is null ? Error.NotFound($"Организация {id} не найдена") : org;
 	}
 
 	public async Task<Result<OrgResponse>> CreateAsync(CreateOrgRequest req)
@@ -112,19 +54,7 @@ public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService au
 
 	public async Task<Result<OrgResponse>> UpdateAsync(int id, UpdateOrgRequest req)
 	{
-		var old = await repo.QueryLite()
-			.Where(o => o.OrgId == id)
-			.Select(o => new
-			{
-				o.OrgTypeId,
-				o.OrgName,
-				o.OrgInn,
-				o.OrgLatitude,
-				o.OrgLongitude,
-				o.OrgAddress,
-			})
-			.FirstOrDefaultAsync();
-
+		var old = await repo.GetAuditSnapshotAsync(id);
 		if (old is null)
 			return Error.NotFound($"Организация {id} не найдена");
 
@@ -145,16 +75,7 @@ public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService au
 		if (diffs.Count > 0)
 		{
 			await using var tx = await db.Database.BeginTransactionAsync();
-			await repo.QueryLite()
-				.Where(o => o.OrgId == id)
-				.ExecuteUpdateAsync(s => s
-					.SetProperty(o => o.OrgTypeId, o => req.OrgTypeId ?? o.OrgTypeId)
-					.SetProperty(o => o.OrgName, o => req.OrgName ?? o.OrgName)
-					.SetProperty(o => o.OrgInn, o => req.Inn ?? o.OrgInn)
-					.SetProperty(o => o.OrgLatitude, o => req.Latitude ?? o.OrgLatitude)
-					.SetProperty(o => o.OrgLongitude, o => req.Longitude ?? o.OrgLongitude)
-					.SetProperty(o => o.OrgAddress, o => req.Address ?? o.OrgAddress));
-
+			await repo.UpdateAsync(id, req);
 			await audit.LogUpdateAsync(AuditEntityType.Org, id, diffs);
 			await tx.CommitAsync();
 		}
@@ -165,10 +86,7 @@ public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService au
 	public async Task<Result> DeleteAsync(int id)
 	{
 		await using var tx = await db.Database.BeginTransactionAsync();
-		var affected = await repo.QueryLite()
-			.Where(a => a.OrgId == id)
-			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
-
+		var affected = await repo.SoftDeleteAsync(id);
 		if (affected == 0)
 			return Error.NotFound($"Организация {id} не найдена");
 
@@ -181,11 +99,7 @@ public class OrgService(IOrgRepository repo, HybridCache cache, IAuditService au
 		Result<IEnumerable<OrgTypeResponse>>.Success(
 			await cache.GetOrCreateAsync(
 				"org-types",
-				async ct =>
-					(IEnumerable<OrgTypeResponse>)
-						await repo.QueryOrgTypes()
-							.Select(ot => new OrgTypeResponse(ot.OrgTypeId, ot.OrgTypeName))
-							.ToListAsync(ct),
+				async ct => (IEnumerable<OrgTypeResponse>)await repo.GetOrgTypesAsync(ct),
 				RefOptions,
 				TypeTags
 			)

@@ -24,7 +24,14 @@ public sealed class ArchitectureTests
 	[Fact]
 	public void RepositoryContracts_DoNotExposeIQueryable()
 	{
-		var repositoryContracts = new[] { typeof(IActivRepository), typeof(IUserRepository) };
+		var repositoryContracts = new[]
+		{
+			typeof(IActivRepository),
+			typeof(IUserRepository),
+			typeof(IOrgRepository),
+			typeof(IPhysRepository),
+			typeof(IDepartmentRepository),
+		};
 
 		var offenders = repositoryContracts
 			.SelectMany(type => type.GetMethods().Select(method => new { type, method }))

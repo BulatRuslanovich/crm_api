@@ -3,7 +3,6 @@ using CrmWebApi.Data.Entities;
 using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Department;
 using CrmWebApi.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace CrmWebApi.Services.Impl;
 
@@ -16,32 +15,12 @@ public class DepartmentService(IDepartmentRepository repo)
 		bool includeTotal = true
 	)
 	{
-		var query = repo.Query();
-		var total = includeTotal ? await query.CountAsync() : 0;
-		var items = await query
-			.OrderBy(d => d.DepartmentId)
-			.Skip((page - 1) * pageSize)
-			.Take(pageSize)
-			.Select(d => new DepartmentResponse(
-				d.DepartmentId,
-				d.DepartmentName,
-				d.UsrDepartments.Count
-			))
-			.ToListAsync();
-
-		return new PagedResponse<DepartmentResponse>(items, page, pageSize, total);
+		return await repo.GetPagedAsync(page, pageSize, includeTotal);
 	}
 
 	public async Task<Result<DepartmentResponse>> GetByIdAsync(int id)
 	{
-		var department = await repo.Query()
-			.Where(d => d.DepartmentId == id)
-			.Select(d => new DepartmentResponse(
-				d.DepartmentId,
-				d.DepartmentName,
-				d.UsrDepartments.Count
-			))
-			.FirstOrDefaultAsync();
+		var department = await repo.GetResponseByIdAsync(id);
 
 		if (department is null)
 			return Error.NotFound($"Департамент {id} не найден");
@@ -59,9 +38,7 @@ public class DepartmentService(IDepartmentRepository repo)
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var affected = await repo.Query()
-			.Where(a => a.DepartmentId == id)
-			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
+		var affected = await repo.SoftDeleteAsync(id);
 
 		return affected == 0
 			? Error.NotFound($"Департамент {id} не найден")

@@ -1,5 +1,6 @@
 using CrmWebApi.Common;
 using CrmWebApi.Data.Entities;
+using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Department;
 using CrmWebApi.Repositories;
 using CrmWebApi.Services.Impl;
@@ -71,11 +72,29 @@ public sealed class DepartmentServiceTests
 	{
 		private readonly List<Department> _departments = departments.ToList();
 
-		public IQueryable<Department> Query() =>
-			_departments.Where(d => !d.IsDeleted).AsAsyncQueryable();
+		public Task<PagedResponse<DepartmentResponse>> GetPagedAsync(
+			int page,
+			int pageSize,
+			bool includeTotal
+		)
+		{
+			var departments = _departments
+				.Where(d => !d.IsDeleted)
+				.Select(ToResponse)
+				.ToList();
+			return Task.FromResult(new PagedResponse<DepartmentResponse>(
+				departments.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+				page,
+				pageSize,
+				includeTotal ? departments.Count : 0
+			));
+		}
 
-		public Task<Department?> FindAsync(int id) =>
-			Task.FromResult(_departments.FirstOrDefault(d => d.DepartmentId == id && !d.IsDeleted));
+		public Task<DepartmentResponse?> GetResponseByIdAsync(int id) =>
+			Task.FromResult(_departments
+				.Where(d => d.DepartmentId == id && !d.IsDeleted)
+				.Select(ToResponse)
+				.FirstOrDefault());
 
 		public Task<Department> AddAsync(Department entity)
 		{
@@ -83,7 +102,13 @@ public sealed class DepartmentServiceTests
 			return Task.FromResult(entity);
 		}
 
-		public Task UpdateAsync(Department entity) => Task.CompletedTask;
+		public Task<int> SoftDeleteAsync(int id)
+		{
+			var department = _departments.FirstOrDefault(d => d.DepartmentId == id && !d.IsDeleted);
+			if (department is null) return Task.FromResult(0);
+			department.IsDeleted = true;
+			return Task.FromResult(1);
+		}
 
 		public Task<bool> UserExistsAsync(int usrId) => Task.FromResult(userExists);
 
@@ -92,5 +117,8 @@ public sealed class DepartmentServiceTests
 		public Task LinkUserAsync(int departmentId, int usrId) => Task.CompletedTask;
 
 		public Task<bool> UnlinkUserAsync(int departmentId, int usrId) => Task.FromResult(unlinkResult);
+
+		private static DepartmentResponse ToResponse(Department department) =>
+			new(department.DepartmentId, department.DepartmentName, department.UsrDepartments.Count);
 	}
 }
