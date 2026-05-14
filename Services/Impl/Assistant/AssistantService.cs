@@ -315,20 +315,20 @@ public sealed class AssistantService(
 		switch (action.Tool)
 		{
 			case "propose_create_activ":
-			{
-				CreateActivRequest? req;
-				try { req = JsonSerializer.Deserialize<CreateActivRequest>(action.PayloadJson); }
-				catch (Exception ex)
 				{
-					logger.LogError(ex, "Failed to parse pending action payload");
-					return Error.Failure("Не удалось разобрать черновик");
-				}
-				if (req is null) return Error.Failure("Пустой черновик");
+					CreateActivRequest? req;
+					try { req = JsonSerializer.Deserialize<CreateActivRequest>(action.PayloadJson); }
+					catch (Exception ex)
+					{
+						logger.LogError(ex, "Failed to parse pending action payload");
+						return Error.Failure("Не удалось разобрать черновик");
+					}
+					if (req is null) return Error.Failure("Пустой черновик");
 
-				var result = await crmWritePort.CreateActivAsync(req);
-				if (!result.IsSuccess) return result.Error!;
-				return Result<object>.Success(result.Value!);
-			}
+					var result = await crmWritePort.CreateActivAsync(req);
+					if (!result.IsSuccess) return result.Error!;
+					return Result<object>.Success(result.Value!);
+				}
 			default:
 				return Error.Failure($"Неизвестный тип действия: {action.Tool}");
 		}
