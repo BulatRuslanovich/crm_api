@@ -8,7 +8,6 @@ using CrmWebApi.DTOs.Auth;
 using CrmWebApi.DTOs.User;
 using CrmWebApi.Options;
 using CrmWebApi.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -23,7 +22,7 @@ public sealed class AuthSessionService(
 {
 	public async Task<Result<AuthTokens>> IssueAsync(int usrId)
 	{
-		var user = await userRepo.QueryWithPolicies().FirstOrDefaultAsync(u => u.UsrId == usrId);
+		var user = await userRepo.GetByIdWithPoliciesAsync(usrId);
 		if (user is null)
 			return Error.Unauthorized("Пользователь не найден или удалён");
 
@@ -52,7 +51,7 @@ public sealed class AuthSessionService(
 		if (stored.RefreshExpiresAt < DateTime.UtcNow)
 			return Error.Unauthorized("Refresh token истёк");
 
-		var user = await userRepo.QueryWithPolicies().FirstOrDefaultAsync(u => u.UsrId == stored.UsrId);
+		var user = await userRepo.GetByIdWithPoliciesAsync(stored.UsrId);
 		if (user is null)
 			return Error.Unauthorized("Пользователь не найден или удалён");
 

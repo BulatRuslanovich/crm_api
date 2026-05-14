@@ -4,7 +4,6 @@ using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Policy;
 using CrmWebApi.DTOs.User;
 using CrmWebApi.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace CrmWebApi.Services.Impl;
@@ -32,28 +31,12 @@ public class UserService(
 		if (currentUser.Scope is not { } scope)
 			return Error.Forbidden("Доступ запрещён");
 
-		var query = repo.QueryForScope(scope);
-		var total = includeTotal ? await query.CountAsync() : 0;
-		var responses = await query
-			.OrderBy(u => u.UsrId)
-			.Skip((page - 1) * pageSize)
-			.Take(pageSize)
-			.Select(u => new UserResponse(
-				u.UsrId,
-				u.UsrFirstname,
-				u.UsrLastname,
-				u.UsrEmail,
-				u.UsrLogin,
-				u.UsrPolicies.Select(p => p.Policy.PolicyName).ToList()
-			))
-			.ToListAsync();
-
-		return new PagedResponse<UserResponse>(responses, page, pageSize, total);
+		return await repo.GetPagedForScopeAsync(page, pageSize, scope, includeTotal);
 	}
 
 	public async Task<Result<UserResponse>> GetByIdAsync(int id)
 	{
-		var user = await repo.QueryWithPolicies().FirstOrDefaultAsync(u => u.UsrId == id);
+		var user = await repo.GetByIdWithPoliciesAsync(id);
 		if (user is null)
 			return Error.NotFound($"Пользователь {id} не найден");
 		return UserResponse.From(user);
@@ -62,7 +45,7 @@ public class UserService(
 	public async Task<Result<UserResponse>> CreateAsync(CreateUserRequest req)
 	{
 		var loginLower = req.Login.ToLower();
-		if (await repo.ExistsAsync(u => u.UsrLogin.ToLower() == loginLower && !u.IsDeleted))
+		if (await repo.ExistsActiveLoginAsync(loginLower))
 			return Error.Conflict("Логин уже занят");
 
 		var user = new Usr
@@ -81,12 +64,7 @@ public class UserService(
 
 	public async Task<Result<UserResponse>> UpdateAsync(int id, UpdateUserRequest req)
 	{
-		var affected = await repo.QueryForUpdate()
-			.Where(u => u.UsrId == id)
-			.ExecuteUpdateAsync(s => s
-				.SetProperty(u => u.UsrFirstname, u => req.FirstName ?? u.UsrFirstname)
-				.SetProperty(u => u.UsrLastname, u => req.LastName ?? u.UsrLastname));
-
+		var affected = await repo.UpdateNamesAsync(id, req.FirstName, req.LastName);
 		if (affected == 0)
 			return Error.NotFound($"Пользователь {id} не найден");
 
@@ -95,10 +73,7 @@ public class UserService(
 
 	public async Task<Result> DeleteAsync(int id)
 	{
-		var affected = await repo.QueryForUpdate()
-			.Where(a => a.UsrId == id)
-			 .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true));
-
+		var affected = await repo.SoftDeleteAsync(id);
 		return affected == 0
 			? Error.NotFound($"Пользователь {id} не найден")
 			: Result.Success();
@@ -106,7 +81,7 @@ public class UserService(
 
 	public async Task<Result> ChangePasswordAsync(int id, ChangePasswordRequest req)
 	{
-		var user = await repo.QueryForUpdate().FirstOrDefaultAsync(u => u.UsrId == id);
+		var user = await repo.GetByIdForUpdateAsync(id);
 		if (user is null)
 			return Error.NotFound($"Пользователь {id} не найден");
 
@@ -135,11 +110,7 @@ public class UserService(
 		Result<IEnumerable<PolicyResponse>>.Success(
 			await cache.GetOrCreateAsync(
 				"policies",
-				async ct =>
-					(IEnumerable<PolicyResponse>)
-						await repo.QueryPolicies()
-							.Select(p => new PolicyResponse(p.PolicyId, p.PolicyName))
-							.ToListAsync(ct),
+				async ct => (IEnumerable<PolicyResponse>)await repo.GetPoliciesAsync(ct),
 				RefOptions,
 				PolicyTags
 			)
@@ -147,9 +118,9 @@ public class UserService(
 
 	public async Task<Result<PolicyResponse>> GetPolicyByIdAsync(int id)
 	{
-		var policy = await repo.QueryPolicies().FirstOrDefaultAsync(p => p.PolicyId == id);
+		var policy = await repo.GetPolicyByIdAsync(id);
 		if (policy is null)
 			return Error.NotFound($"Политика {id} не найдена");
-		return new PolicyResponse(policy.PolicyId, policy.PolicyName);
+		return policy;
 	}
 }

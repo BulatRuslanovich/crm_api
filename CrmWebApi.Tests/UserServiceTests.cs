@@ -1,7 +1,8 @@
-using System.Linq.Expressions;
 using CrmWebApi.Common;
 using CrmWebApi.Data.Entities;
+using CrmWebApi.DTOs;
 using CrmWebApi.DTOs.Auth;
+using CrmWebApi.DTOs.Policy;
 using CrmWebApi.DTOs.User;
 using CrmWebApi.Repositories;
 using CrmWebApi.Services;
@@ -127,19 +128,42 @@ public sealed class UserServiceTests
 
 		public IReadOnlyList<Usr> Users => _users;
 
-		public IQueryable<Usr> QueryForScope(Scope scope) => QueryWithPolicies();
+		public Task<PagedResponse<UserResponse>> GetPagedForScopeAsync(
+			int page,
+			int pageSize,
+			Scope scope,
+			bool includeTotal
+		)
+		{
+			var users = _users.Where(u => !u.IsDeleted).Select(UserResponse.From).ToList();
+			return Task.FromResult(new PagedResponse<UserResponse>(
+				users.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+				page,
+				pageSize,
+				includeTotal ? users.Count : 0
+			));
+		}
 
-		public IQueryable<Usr> QueryWithPolicies() =>
-			_users.Where(u => !u.IsDeleted).AsAsyncQueryable();
+		public Task<Usr?> GetByIdWithPoliciesAsync(int id) =>
+			Task.FromResult(_users.FirstOrDefault(u => !u.IsDeleted && u.UsrId == id));
 
-		public IQueryable<Usr> QueryForRead() =>
-			_users.Where(u => !u.IsDeleted).AsAsyncQueryable();
+		public Task<Usr?> GetByIdForUpdateAsync(int id) =>
+			Task.FromResult(_users.FirstOrDefault(u => !u.IsDeleted && u.UsrId == id));
 
-		public IQueryable<Usr> QueryForUpdate() =>
-			_users.Where(u => !u.IsDeleted).AsAsyncQueryable();
+		public Task<Usr?> GetByLoginWithPoliciesAsync(string loginLower) =>
+			Task.FromResult(_users.FirstOrDefault(u => !u.IsDeleted && u.UsrLogin.ToLower() == loginLower));
 
-		public Task<bool> ExistsAsync(Expression<Func<Usr, bool>> predicate) =>
-			Task.FromResult(_users.AsQueryable().Any(predicate));
+		public Task<Usr?> GetByEmailForUpdateAsync(string emailLower) =>
+			Task.FromResult(_users.FirstOrDefault(u => !u.IsDeleted && u.UsrEmail.ToLower() == emailLower));
+
+		public Task<Usr?> GetConfirmedByEmailAsync(string emailLower) =>
+			Task.FromResult(_users.FirstOrDefault(u => !u.IsDeleted && u.IsEmailConfirmed && u.UsrEmail.ToLower() == emailLower));
+
+		public Task<bool> ExistsActiveByLoginOrEmailAsync(string loginLower, string emailLower) =>
+			Task.FromResult(_users.Any(u => !u.IsDeleted && (u.UsrLogin.ToLower() == loginLower || u.UsrEmail.ToLower() == emailLower)));
+
+		public Task<bool> ExistsActiveLoginAsync(string loginLower) =>
+			Task.FromResult(_users.Any(u => !u.IsDeleted && u.UsrLogin.ToLower() == loginLower));
 
 		public Task<Usr> AddAsync(Usr entity)
 		{
@@ -155,12 +179,32 @@ public sealed class UserServiceTests
 
 		public Task UpdateAsync(Usr entity) => Task.CompletedTask;
 
+		public Task<int> UpdateNamesAsync(int id, string? firstName, string? lastName)
+		{
+			var user = _users.FirstOrDefault(u => !u.IsDeleted && u.UsrId == id);
+			if (user is null) return Task.FromResult(0);
+			user.UsrFirstname = firstName ?? user.UsrFirstname;
+			user.UsrLastname = lastName ?? user.UsrLastname;
+			return Task.FromResult(1);
+		}
+
+		public Task<int> SoftDeleteAsync(int id)
+		{
+			var user = _users.FirstOrDefault(u => !u.IsDeleted && u.UsrId == id);
+			if (user is null) return Task.FromResult(0);
+			user.IsDeleted = true;
+			return Task.FromResult(1);
+		}
+
 		public Task LinkPolicyAsync(int userId, int policyId) => Task.CompletedTask;
 
 		public Task UnlinkPolicyAsync(int userId, int policyId) => Task.CompletedTask;
 
-		public IQueryable<Policy> QueryPolicies() =>
-			Enumerable.Empty<Policy>().AsAsyncQueryable();
+		public Task<IReadOnlyList<PolicyResponse>> GetPoliciesAsync(CancellationToken ct = default) =>
+			Task.FromResult<IReadOnlyList<PolicyResponse>>([]);
+
+		public Task<PolicyResponse?> GetPolicyByIdAsync(int id) =>
+			Task.FromResult<PolicyResponse?>(null);
 	}
 
 	private sealed class NoopSessionService : IAuthSessionService
